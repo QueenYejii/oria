@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { lazy, Suspense } from "react";
+import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { AppProviders } from "../providers/AppProviders";
 import { LandingPage } from "../pages/LandingPage";
 
@@ -12,6 +13,9 @@ const SpacesPage = lazy(() =>
 const SpaceDetailPage = lazy(() =>
   import("../pages/SpaceDetailPage").then((module) => ({ default: module.SpaceDetailPage }))
 );
+const CreatorPage = lazy(() =>
+  import("../pages/CreatorPage").then((module) => ({ default: module.CreatorPage }))
+);
 const VaultPage = lazy(() =>
   import("../pages/VaultPage").then((module) => ({ default: module.VaultPage }))
 );
@@ -19,16 +23,26 @@ const VaultPage = lazy(() =>
 export function App() {
   return (
     <AppProviders>
-      <Suspense fallback={<div className="route-loading">Loading Oria...</div>}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/create" element={<CreateSpacePage />} />
-          <Route path="/spaces" element={<SpacesPage />} />
-          <Route path="/spaces/:spaceId" element={<SpaceDetailPage />} />
-          <Route path="/vault" element={<VaultPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <AppErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="route-loading">
+              <span />
+              <strong>Loading Oria</strong>
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/create" element={<CreateSpacePage />} />
+            <Route path="/spaces" element={<SpacesPage />} />
+            <Route path="/spaces/:spaceId" element={<SpaceDetailPage />} />
+            <Route path="/u/:address" element={<CreatorPage />} />
+            <Route path="/vault" element={<VaultPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </AppErrorBoundary>
     </AppProviders>
   );
 }

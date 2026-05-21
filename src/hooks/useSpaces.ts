@@ -1,11 +1,26 @@
 import { useEffect, useState } from "react";
+import { importRegistrySpace, importRegistrySpaces } from "../lib/discovery/import";
 import { getSpace, listSpaces, listSpacesByOwner, subscribeToSpaces } from "../lib/spaces/local-store";
 import type { OriaNetwork } from "../types/network";
 
-export function useSpaces() {
+export function useSpaces(params: { network?: OriaNetwork; creator?: string; q?: string } = {}) {
   const [spaces, setSpaces] = useState(() => listSpaces());
 
   useEffect(() => subscribeToSpaces(() => setSpaces(listSpaces())), []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    importRegistrySpaces(params)
+      .then(() => {
+        if (!cancelled) setSpaces(listSpaces());
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.creator, params.network, params.q]);
 
   return spaces;
 }
@@ -19,6 +34,22 @@ export function useSpace(spaceId: string | undefined) {
 
     return subscribeToSpaces(update);
   }, [spaceId]);
+
+  useEffect(() => {
+    if (!spaceId || space) return;
+
+    let cancelled = false;
+
+    importRegistrySpace(spaceId)
+      .then((imported) => {
+        if (!cancelled && imported) setSpace(imported);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [space, spaceId]);
 
   return space;
 }

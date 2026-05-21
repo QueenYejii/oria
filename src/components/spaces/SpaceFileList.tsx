@@ -6,10 +6,16 @@ import type { Space, SpaceFile } from "../../types/space";
 type SpaceFileListProps = {
   space: Space;
   activeFileId?: string | null;
+  canDownload?: boolean;
   onDownload?: (space: Space, file: SpaceFile) => void;
 };
 
-export function SpaceFileList({ space, activeFileId, onDownload }: SpaceFileListProps) {
+export function SpaceFileList({
+  space,
+  activeFileId,
+  canDownload = true,
+  onDownload,
+}: SpaceFileListProps) {
   return (
     <div className="file-table">
       {space.files.map((file) => (
@@ -31,6 +37,7 @@ export function SpaceFileList({ space, activeFileId, onDownload }: SpaceFileList
               <Download size={18} />
             </button>
           )}
+          {!canDownload && <span className="locked-label">Locked</span>}
         </article>
       ))}
     </div>

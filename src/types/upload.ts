@@ -4,6 +4,7 @@ export type UploadItemStatus =
   | "ready"
   | "signing"
   | "uploading"
+  | "indexing"
   | "published"
   | "failed";
 

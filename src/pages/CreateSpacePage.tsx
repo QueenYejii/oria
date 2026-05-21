@@ -15,10 +15,12 @@ export function CreateSpacePage() {
   const navigate = useNavigate();
   const wallet = useWallet();
   const { activeNetwork, networkConfig } = useActiveNetwork();
-  const { createSpace, uploadItems, isUploading } = useCreateSpace();
+  const { createSpace, retryLastUpload, canRetry, uploadItems, isUploading } = useCreateSpace();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<SpaceVisibility>("public");
+  const [priceApt, setPriceApt] = useState("0.01");
+  const [allowlistText, setAllowlistText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const address = getAccountAddress(wallet.account);
@@ -33,7 +35,17 @@ export function CreateSpacePage() {
     setError(null);
 
     try {
-      const space = await createSpace({ title, description, visibility, files });
+      const space = await createSpace({
+        title,
+        description,
+        visibility,
+        priceOctas: visibility === "paid" ? Math.round(Number(priceApt) * 100_000_000) : undefined,
+        allowlist: allowlistText
+          .split(/[\s,]+/)
+          .map((value) => value.trim())
+          .filter(Boolean),
+        files,
+      });
       navigate(`/spaces/${space.id}`);
     } catch (caught) {
       setError(getErrorMessage(caught));
@@ -98,18 +110,56 @@ export function CreateSpacePage() {
             ))}
           </div>
 
+          {visibility === "paid" && (
+            <label>
+              <span>Price in APT</span>
+              <input
+                min="0.000001"
+                step="0.000001"
+                type="number"
+                value={priceApt}
+                onChange={(event) => setPriceApt(event.target.value)}
+                placeholder="0.01"
+              />
+            </label>
+          )}
+
+          {visibility === "wallet_gated" && (
+            <label>
+              <span>Allowed wallets</span>
+              <textarea
+                value={allowlistText}
+                onChange={(event) => setAllowlistText(event.target.value)}
+                placeholder="0x... one address per line. Leave empty for creator-only."
+                rows={3}
+              />
+            </label>
+          )}
+
           <UploadDropzone files={files} onFilesChange={setFiles} />
           <UploadQueue items={uploadItems} />
 
           {error && <p className="form-error">{error}</p>}
 
-          <button
-            className="button primary publish-button"
-            type="submit"
-            disabled={isUploading || !wallet.connected || networkMismatch}
-          >
-            {isUploading ? "Publishing..." : "Publish Space"}
-          </button>
+          <div className="form-actions">
+            <button
+              className="button primary publish-button"
+              type="submit"
+              disabled={isUploading || !wallet.connected || networkMismatch}
+            >
+              {isUploading ? "Publishing..." : "Publish Space"}
+            </button>
+            {canRetry && (
+              <button
+                className="button secondary publish-button"
+                type="button"
+                disabled={isUploading}
+                onClick={() => retryLastUpload().then((space) => navigate(`/spaces/${space.id}`))}
+              >
+                Retry failed upload
+              </button>
+            )}
+          </div>
         </form>
       </main>
     </>

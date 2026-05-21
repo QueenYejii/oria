@@ -17,8 +17,8 @@ export function SpacesPage() {
           <p className="eyebrow">Spaces</p>
           <h1>Published on the active network.</h1>
           <p>
-            These Spaces are stored locally as Oria metadata and point to Shelby blobs owned by
-            the publishing wallet.
+            Oria merges local metadata with the discovery API when registry configuration is
+            available, then resolves each Space manifest from Shelby.
           </p>
         </section>
 
