@@ -1,4 +1,5 @@
 import { AppHeader } from "../components/layout/AppHeader";
+import { SiteFooter } from "../components/layout/SiteFooter";
 import { AppEntrySection } from "../components/landing/AppEntrySection";
 import { Hero } from "../components/landing/Hero";
 import { NetworkSection } from "../components/landing/NetworkSection";
@@ -20,10 +21,7 @@ export function LandingPage() {
         <NetworkSection />
         <WorkflowSection />
       </main>
-      <footer className="site-footer">
-        <span>Oria</span>
-        <p>Large-file publishing for Shelby-powered spaces.</p>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
