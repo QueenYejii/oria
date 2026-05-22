@@ -27,15 +27,16 @@ not only as a low-level storage primitive.
 ## Product Status
 
 Oria is an active testnet-stage dApp. The frontend is live and the core product
-surface is implemented. Some production-grade pieces depend on Shelby testnet
-access, deployed registry contracts, and a hosted discovery API.
+surface is implemented. The current primary target is Shelbynet because it is
+available for early testing. Shelby Testnet support remains in the app and will
+be validated after early access is approved.
 
 Implemented:
 
 - Vite, React, TypeScript app shell.
 - Aptos wallet adapter integration.
 - Shelby SDK integration structure.
-- Shelby Testnet and Shelbynet network switcher.
+- Shelbynet-first network flow with Shelby Testnet support kept available.
 - Space creation flow with manifest generation.
 - Local metadata persistence.
 - Public, wallet-gated, and paid Space UI.
@@ -61,7 +62,7 @@ Still required for full production:
 - Host the discovery API and configure `VITE_ORIA_DISCOVERY_API_URL`.
 - Verify real on-chain purchase and allowlist state from the registry/indexer.
 - Replace local payment fallback with fully indexed on-chain history.
-- Integrate Shelby testnet credentials and validate live upload/retrieval behavior.
+- Validate Shelby Testnet upload/retrieval behavior after early access is approved.
 
 ## Tech Stack
 
@@ -88,7 +89,7 @@ Oria supports two Shelby-oriented network targets:
 | Shelby Testnet | Stable demos and repeatable testing | `https://api.testnet.aptoslabs.com/v1` | `https://api.testnet.shelby.xyz/shelby` |
 | Shelbynet | Experimental protocol testing | `https://api.shelbynet.shelby.xyz/v1` | `https://api.shelbynet.shelby.xyz/shelby` |
 
-The default network can be configured with `VITE_DEFAULT_ORIA_NETWORK`.
+The default network is Shelbynet. It can be changed with `VITE_DEFAULT_ORIA_NETWORK`.
 
 ## Core Concepts
 
@@ -195,7 +196,8 @@ Endpoints:
 - Node.js 20 or newer
 - npm
 - Aptos-compatible wallet
-- Shelby early access credentials for live Shelby testnet usage
+- Shelbynet access for current live testing
+- Shelby early access credentials for Shelby Testnet validation later
 - Aptos CLI for Move contract compile/deploy work
 
 ### Install
@@ -221,7 +223,7 @@ Copy-Item .env.example .env
 Available variables:
 
 ```bash
-VITE_DEFAULT_ORIA_NETWORK=testnet
+VITE_DEFAULT_ORIA_NETWORK=shelbynet
 VITE_APTOS_API_KEY=
 VITE_SHELBY_API_KEY=
 VITE_ORIA_REGISTRY_ADDRESS=
@@ -229,7 +231,7 @@ VITE_ORIA_DISCOVERY_API_URL=
 
 PORT=8787
 ORIA_REGISTRY_ADDRESS=
-APTOS_NODE_URL=https://api.testnet.aptoslabs.com/v1
+APTOS_NODE_URL=https://api.shelbynet.shelby.xyz/v1
 ```
 
 Frontend variables:
@@ -303,7 +305,7 @@ audited, and tested before production use.
 ### Create a Space
 
 1. Connect an Aptos wallet.
-2. Select Shelby Testnet or Shelbynet.
+2. Use Shelbynet by default, or switch network from the header when needed.
 3. Add title, description, visibility, and optional price or allowlist.
 4. Drop files into Oria.
 5. Sign upload and registry transactions.
@@ -373,8 +375,8 @@ Recommended production topology:
 
 - Vercel for the frontend.
 - Railway, Fly.io, Render, or similar for the discovery API.
-- Aptos testnet/Shelbynet for registry deployment.
-- Shelby testnet credentials for blob upload and retrieval.
+- Shelbynet for the first registry deployment target.
+- Shelby Testnet credentials for blob upload and retrieval after early access.
 
 ## Known Limitations
 
@@ -390,7 +392,8 @@ Recommended production topology:
 
 ## Roadmap
 
-- Deploy and initialize the Space Registry on Aptos testnet and Shelbynet.
+- Deploy and initialize the Space Registry on Shelbynet first.
+- Validate Shelby Testnet after early access is accepted.
 - Host the discovery API.
 - Add fully indexed creator profiles.
 - Add public profile customization.

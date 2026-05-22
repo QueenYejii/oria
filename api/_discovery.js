@@ -1,34 +1,50 @@
-import { createServer } from "node:http";
+const defaultNodeUrl = "https://api.shelbynet.shelby.xyz/v1";
 
-const port = Number(process.env.PORT ?? 8787);
-const registryAddress = process.env.ORIA_REGISTRY_ADDRESS;
-const nodeUrl =
-  process.env.APTOS_NODE_URL ?? process.env.VITE_APTOS_NODE_URL ?? "https://api.shelbynet.shelby.xyz/v1";
+function getConfig() {
+  const registryAddress = process.env.ORIA_REGISTRY_ADDRESS || process.env.VITE_ORIA_REGISTRY_ADDRESS;
+  const nodeUrl = process.env.APTOS_NODE_URL || process.env.VITE_APTOS_NODE_URL || defaultNodeUrl;
 
-const moduleAddress = registryAddress;
-const registryType = moduleAddress
-  ? `${moduleAddress}::space_registry::Registry`
-  : undefined;
-const spaceRecordType = moduleAddress
-  ? `${moduleAddress}::space_registry::SpaceRecord`
-  : undefined;
+  if (!registryAddress) {
+    throw new Error("ORIA_REGISTRY_ADDRESS is required.");
+  }
 
-function sendJson(response, status, payload) {
-  response.writeHead(status, {
-    "content-type": "application/json; charset=utf-8",
-    "access-control-allow-origin": process.env.CORS_ORIGIN ?? "*",
-    "access-control-allow-methods": "GET,OPTIONS",
-    "access-control-allow-headers": "content-type",
-  });
-  response.end(JSON.stringify(payload));
+  return {
+    registryAddress,
+    nodeUrl,
+    registryType: `${registryAddress}::space_registry::Registry`,
+    spaceRecordType: `${registryAddress}::space_registry::SpaceRecord`,
+  };
+}
+
+export function sendJson(response, status, payload) {
+  response.setHeader("content-type", "application/json; charset=utf-8");
+  response.setHeader("access-control-allow-origin", process.env.CORS_ORIGIN || "*");
+  response.setHeader("access-control-allow-methods", "GET,OPTIONS");
+  response.setHeader("access-control-allow-headers", "content-type");
+  response.status(status).json(payload);
+}
+
+export function handleOptions(request, response) {
+  if (request.method === "OPTIONS") {
+    sendJson(response, 204, {});
+    return true;
+  }
+
+  if (request.method !== "GET") {
+    sendJson(response, 405, { error: "Method not allowed" });
+    return true;
+  }
+
+  return false;
 }
 
 async function aptos(path, init) {
+  const { nodeUrl } = getConfig();
   const response = await fetch(`${nodeUrl}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
-      ...(init?.headers ?? {}),
+      ...(init?.headers || {}),
     },
   });
 
@@ -41,10 +57,7 @@ async function aptos(path, init) {
 }
 
 async function getRegistry() {
-  if (!registryAddress || !registryType || !spaceRecordType) {
-    throw new Error("ORIA_REGISTRY_ADDRESS is required.");
-  }
-
+  const { registryAddress, registryType } = getConfig();
   const resource = await aptos(
     `/accounts/${registryAddress}/resource/${encodeURIComponent(registryType)}`,
   );
@@ -82,7 +95,8 @@ function normalizeRecord(record) {
   };
 }
 
-async function listRecords(query) {
+export async function listRecords(searchParams) {
+  const { spaceRecordType } = getConfig();
   const registry = await getRegistry();
   const handle = tableHandle(registry.spaces);
   const ids = Array.isArray(registry.space_ids) ? registry.space_ids : [];
@@ -90,11 +104,11 @@ async function listRecords(query) {
     ids.map((spaceId) => getTableItem(handle, "0x1::string::String", spaceRecordType, spaceId)),
   );
   const normalized = records.map(normalizeRecord);
-  const q = query.get("q")?.toLowerCase();
-  const creator = query.get("creator")?.toLowerCase();
-  const network = query.get("network");
-  const visibility = query.get("visibility");
-  const limit = Math.min(Number(query.get("limit") ?? 50), 100);
+  const q = searchParams.get("q")?.toLowerCase();
+  const creator = searchParams.get("creator")?.toLowerCase();
+  const network = searchParams.get("network");
+  const visibility = searchParams.get("visibility");
+  const limit = Math.min(Number(searchParams.get("limit") || 50), 100);
 
   return normalized
     .filter((record) => !creator || record.creator.toLowerCase() === creator)
@@ -111,14 +125,15 @@ async function listRecords(query) {
     .slice(0, limit);
 }
 
-async function getRecord(spaceId) {
+export async function getRecord(spaceId) {
+  const { spaceRecordType } = getConfig();
   const registry = await getRegistry();
   const handle = tableHandle(registry.spaces);
   const record = await getTableItem(handle, "0x1::string::String", spaceRecordType, spaceId);
   return normalizeRecord(record);
 }
 
-async function getAccess(spaceId, wallet) {
+export async function getAccess(spaceId, wallet) {
   const registry = await getRegistry();
   const purchasesHandle = tableHandle(registry.purchases);
   const allowlistsHandle = tableHandle(registry.allowlists);
@@ -154,52 +169,11 @@ async function getAccess(spaceId, wallet) {
   };
 }
 
-const server = createServer(async (request, response) => {
-  if (request.method === "OPTIONS") {
-    sendJson(response, 204, {});
-    return;
-  }
-
-  try {
-    const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
-
-    if (url.pathname === "/health") {
-      sendJson(response, 200, { ok: true, registryAddress, nodeUrl });
-      return;
-    }
-
-    if (url.pathname === "/spaces") {
-      sendJson(response, 200, { spaces: await listRecords(url.searchParams) });
-      return;
-    }
-
-    const creatorMatch = url.pathname.match(/^\/creators\/([^/]+)$/);
-    if (creatorMatch) {
-      const creator = decodeURIComponent(creatorMatch[1]);
-      const query = new URLSearchParams(url.searchParams);
-      query.set("creator", creator);
-      sendJson(response, 200, { creator, spaces: await listRecords(query) });
-      return;
-    }
-
-    const accessMatch = url.pathname.match(/^\/spaces\/([^/]+)\/access\/([^/]+)$/);
-    if (accessMatch) {
-      sendJson(response, 200, await getAccess(decodeURIComponent(accessMatch[1]), accessMatch[2]));
-      return;
-    }
-
-    const spaceMatch = url.pathname.match(/^\/spaces\/([^/]+)$/);
-    if (spaceMatch) {
-      sendJson(response, 200, { space: await getRecord(decodeURIComponent(spaceMatch[1])) });
-      return;
-    }
-
-    sendJson(response, 404, { error: "Not found" });
-  } catch (error) {
-    sendJson(response, 500, { error: error instanceof Error ? error.message : String(error) });
-  }
-});
-
-server.listen(port, () => {
-  console.log(`Oria discovery API listening on http://127.0.0.1:${port}`);
-});
+export function getHealthPayload() {
+  const { registryAddress, nodeUrl } = getConfig();
+  return {
+    ok: true,
+    registryAddress,
+    nodeUrl,
+  };
+}

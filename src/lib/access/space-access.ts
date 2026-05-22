@@ -12,6 +12,7 @@ export function resolveSpaceAccess(params: {
   viewer?: string;
   hasPaid?: boolean;
   isAllowlisted?: boolean;
+  trustExternalAccessState?: boolean;
 }): SpaceAccessState {
   const viewer = params.viewer?.toLowerCase();
   const owner = params.space.creator.toLowerCase();
@@ -39,7 +40,8 @@ export function resolveSpaceAccess(params: {
   if (
     params.space.visibility === "wallet_gated" &&
     (params.isAllowlisted ||
-      params.space.access.allowlist?.some((wallet) => wallet.toLowerCase() === viewer))
+      (!params.trustExternalAccessState &&
+        params.space.access.allowlist?.some((wallet) => wallet.toLowerCase() === viewer)))
   ) {
     return { status: "paid", canDownload: true, reason: "This wallet is on the allowlist." };
   }

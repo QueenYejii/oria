@@ -10,7 +10,7 @@ export function Hero() {
         <span />
       </div>
       <div className="hero-copy reveal" data-reveal>
-        <p className="eyebrow">Built for Shelby Testnet and Shelbynet</p>
+        <p className="eyebrow">Built first for Shelbynet</p>
         <h1>Publish heavy digital work with a lighter touch.</h1>
         <p className="hero-lede">
           Oria turns large media, bundles, and datasets into clean shareable spaces.

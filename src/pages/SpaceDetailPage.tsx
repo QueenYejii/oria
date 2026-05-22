@@ -8,7 +8,7 @@ import { SpacePreview } from "../components/spaces/SpacePreview";
 import { hasLocalPayment, saveLocalPayment, subscribeToPayments } from "../lib/access/payments";
 import { resolveSpaceAccess } from "../lib/access/space-access";
 import { getRegistryAccess, type RegistryAccessRecord } from "../lib/discovery/client";
-import { purchaseSpaceOnChain, updateSpaceManifestOnChain } from "../lib/registry/client";
+import { hasRegistryConfig, purchaseSpaceOnChain, updateSpaceManifestOnChain } from "../lib/registry/client";
 import { createShelbyClient } from "../lib/shelby/client";
 import { decodeSpaceManifest, createShareUrl, encodeSpaceManifest } from "../lib/spaces/manifest";
 import { deleteSpace, saveSpace } from "../lib/spaces/local-store";
@@ -46,15 +46,18 @@ export function SpaceDetailPage() {
     allowlistText: "",
   });
   const { notify } = useToasts();
+  const hasOnChainRegistry = hasRegistryConfig();
   const shelbyClient = useMemo(
-    () => createShelbyClient(space?.network ?? (searchParams.get("network") as OriaNetwork) ?? "testnet"),
+    () => createShelbyClient(space?.network ?? (searchParams.get("network") as OriaNetwork) ?? "shelbynet"),
     [searchParams, space?.network],
   );
   const uploadBlobs = useUploadBlobs({ client: shelbyClient });
   const isOwner = Boolean(space && viewer && space.creator.toLowerCase() === viewer.toLowerCase());
   const hasPaid = space
-    ? registryAccess?.hasPurchased ||
-      hasLocalPayment({ spaceId: space.id, network: space.network, payer: viewer })
+    ? hasOnChainRegistry
+      ? Boolean(registryAccess?.hasPurchased)
+      : registryAccess?.hasPurchased ||
+        hasLocalPayment({ spaceId: space.id, network: space.network, payer: viewer })
     : false;
   const access = space
     ? resolveSpaceAccess({
@@ -62,6 +65,7 @@ export function SpaceDetailPage() {
         viewer,
         hasPaid,
         isAllowlisted: registryAccess?.isAllowlisted,
+        trustExternalAccessState: hasOnChainRegistry,
       })
     : null;
   const shareUrl = useMemo(() => (space ? createShareUrl(space) : ""), [space]);

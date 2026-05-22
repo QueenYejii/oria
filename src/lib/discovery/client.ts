@@ -20,7 +20,7 @@ export type RegistryAccessRecord = {
 };
 
 export function getDiscoveryApiUrl() {
-  return import.meta.env.VITE_ORIA_DISCOVERY_API_URL as string | undefined;
+  return (import.meta.env.VITE_ORIA_DISCOVERY_API_URL as string | undefined) || (import.meta.env.PROD ? "/api" : undefined);
 }
 
 async function discoveryFetch<T>(path: string) {

@@ -12,7 +12,7 @@ export const NetworkContext = createContext<NetworkContextValue | null>(null);
 
 const initialNetwork = (() => {
   const value = import.meta.env.VITE_DEFAULT_ORIA_NETWORK;
-  return value === "shelbynet" ? "shelbynet" : "testnet";
+  return value === "testnet" ? "testnet" : "shelbynet";
 })();
 
 export function NetworkProvider({ children }: PropsWithChildren) {

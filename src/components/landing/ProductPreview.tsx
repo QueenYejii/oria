@@ -45,7 +45,7 @@ export function ProductPreview() {
         <div className="stage-insight" aria-label="Space state">
           <span>
             Network
-            <strong>Shelby Testnet</strong>
+            <strong>Shelbynet</strong>
           </span>
           <span>
             Owner
