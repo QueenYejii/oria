@@ -1,6 +1,7 @@
 import { Eye, FileWarning } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useActiveNetwork } from "../../hooks/useActiveNetwork";
+import { useGsapSwap } from "../../hooks/useGsapSwap";
 import { createShelbyClient } from "../../lib/shelby/client";
 import { getPreviewKind } from "../../lib/utils/files";
 import { formatBytes } from "../../lib/utils/format";
@@ -42,6 +43,8 @@ export function SpacePreview({ space, canPreview }: { space: Space; canPreview: 
   const previewFile =
     previewFiles.find((file) => file.id === selectedFileId) ?? defaultPreviewFile ?? null;
   const isLargePreview = Boolean(previewFile && previewFile.size > largePreviewThreshold);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  useGsapSwap(stageRef, previewFile?.id);
 
   useEffect(() => {
     setSelectedFileId(null);
@@ -111,7 +114,7 @@ export function SpacePreview({ space, canPreview }: { space: Space; canPreview: 
       </div>
 
       <div className="preview-layout">
-        <div className="preview-stage">
+        <div ref={stageRef} className="preview-stage">
           {!canPreview ? (
             <div className="preview-locked">
               <FileWarning size={28} />

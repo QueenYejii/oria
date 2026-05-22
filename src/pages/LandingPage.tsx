@@ -5,10 +5,10 @@ import { Hero } from "../components/landing/Hero";
 import { NetworkSection } from "../components/landing/NetworkSection";
 import { SpacesSection } from "../components/landing/SpacesSection";
 import { WorkflowSection } from "../components/landing/WorkflowSection";
-import { useRevealOnScroll } from "../hooks/useRevealOnScroll";
+import { useGsapLandingMotion } from "../hooks/useGsapLandingMotion";
 
 export function LandingPage() {
-  useRevealOnScroll();
+  useGsapLandingMotion();
 
   return (
     <>

@@ -8,6 +8,7 @@ type Toast = {
   tone: ToastTone;
   title: string;
   message?: string;
+  leaving?: boolean;
 };
 
 type ToastInput = Omit<Toast, "id">;
@@ -26,7 +27,12 @@ export function ToastProvider({ children }: PropsWithChildren) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const dismiss = useCallback((id: string) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id));
+    setToasts((current) =>
+      current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)),
+    );
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 240);
   }, []);
 
   const notify = useCallback(
@@ -48,7 +54,7 @@ export function ToastProvider({ children }: PropsWithChildren) {
           const Icon = toast.tone === "success" ? CheckCircle2 : toast.tone === "error" ? XCircle : Info;
 
           return (
-            <article key={toast.id} className={`toast ${toast.tone}`}>
+            <article key={toast.id} className={`toast ${toast.tone} ${toast.leaving ? "leaving" : ""}`}>
               <Icon size={18} aria-hidden="true" />
               <div>
                 <strong>{toast.title}</strong>

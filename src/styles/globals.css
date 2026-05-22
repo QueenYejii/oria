@@ -104,6 +104,11 @@ img {
   letter-spacing: 0;
 }
 
+.route-shell {
+  min-height: 100svh;
+  will-change: transform, opacity;
+}
+
 .route-error {
   min-height: 100vh;
   display: grid;
@@ -147,6 +152,27 @@ img {
     0 18px 48px color-mix(in oklch, var(--ink) 10%, transparent),
     inset 0 1px 0 color-mix(in oklch, var(--paper) 92%, transparent);
   backdrop-filter: blur(24px) saturate(1.08);
+  transform-origin: 50% 0;
+  transition:
+    width 360ms var(--ease-out-expo),
+    padding 360ms var(--ease-out-expo),
+    border-color 360ms var(--ease-out-expo),
+    background-color 360ms var(--ease-out-expo),
+    box-shadow 360ms var(--ease-out-expo),
+    transform 360ms var(--ease-out-expo);
+}
+
+.site-header.scrolled {
+  width: min(1240px, calc(100% - (var(--page-gutter) * 2)));
+  padding: 0.32rem;
+  border-color: color-mix(in oklch, var(--ink) 17%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--paper) 96%, transparent), color-mix(in oklch, var(--mist) 18%, transparent)),
+    color-mix(in oklch, var(--paper) 90%, transparent);
+  box-shadow:
+    0 14px 38px color-mix(in oklch, var(--ink) 11%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--paper) 94%, transparent);
+  transform: translateY(-0.15rem) scale(0.992);
 }
 
 .brand {
@@ -494,31 +520,31 @@ img {
 }
 
 .hero-copy > * {
-  animation: rise-in 780ms var(--ease-out-expo) both;
+  will-change: transform, opacity;
 }
 
 .hero-copy > *:nth-child(2) {
-  animation-delay: 80ms;
+  --hero-delay: 80ms;
 }
 
 .hero-copy > *:nth-child(3) {
-  animation-delay: 150ms;
+  --hero-delay: 150ms;
 }
 
 .hero-copy > *:nth-child(4) {
-  animation-delay: 220ms;
+  --hero-delay: 220ms;
 }
 
 .hero-copy > *:nth-child(5) {
-  animation-delay: 290ms;
+  --hero-delay: 290ms;
 }
 
 .hero-copy > *:nth-child(6) {
-  animation-delay: 360ms;
+  --hero-delay: 360ms;
 }
 
 .hero-copy > *:nth-child(7) {
-  animation-delay: 430ms;
+  --hero-delay: 430ms;
 }
 
 .eyebrow,
@@ -690,7 +716,7 @@ h1 {
   position: relative;
   width: min(100%, 700px);
   justify-self: end;
-  animation: stage-enter 860ms var(--ease-out-expo) 180ms both;
+  will-change: transform, opacity;
 }
 
 .hero-stage::before {
@@ -1006,8 +1032,24 @@ h1 {
 .upload-row.uploading,
 .upload-row.signing,
 .upload-row.indexing {
+  position: relative;
   border-color: color-mix(in oklch, var(--teal) 55%, transparent);
   animation: row-pulse 2.8s var(--ease-out-quint) infinite;
+  overflow: hidden;
+}
+
+.upload-row.uploading::after,
+.upload-row.signing::after,
+.upload-row.indexing::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--teal-deep), var(--clay), transparent);
+  transform: translateX(-100%);
+  animation: upload-sweep 1.8s var(--ease-out-quint) infinite;
 }
 
 .upload-row.complete .file-icon {
@@ -2608,8 +2650,8 @@ h1 {
 }
 
 .reveal {
-  opacity: 0;
-  transform: translateY(22px);
+  opacity: 1;
+  transform: translateY(0);
   transition:
     opacity 800ms cubic-bezier(0.16, 1, 0.3, 1),
     transform 800ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -2645,7 +2687,12 @@ h1 {
     var(--paper);
   box-shadow: 0 18px 52px color-mix(in oklch, var(--ink) 16%, transparent);
   pointer-events: auto;
-  animation: rise-in 420ms var(--ease-out-expo);
+  animation: toast-enter 420ms var(--ease-out-expo) both;
+  will-change: transform, opacity;
+}
+
+.toast.leaving {
+  animation: toast-exit 240ms var(--ease-out-quint) both;
 }
 
 .toast.success > svg {
@@ -2715,6 +2762,24 @@ h1 {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, 18px, 0) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toast-exit {
+  to {
+    opacity: 0;
+    transform: translate3d(18px, 8px, 0) scale(0.985);
   }
 }
 
@@ -2789,6 +2854,16 @@ h1 {
   }
   50% {
     box-shadow: 0 14px 34px color-mix(in oklch, var(--teal) 16%, transparent);
+  }
+}
+
+@keyframes upload-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  70%,
+  100% {
+    transform: translateX(100%);
   }
 }
 
@@ -3130,6 +3205,10 @@ h1 {
   .reveal {
     opacity: 1;
     transform: none;
+  }
+
+  .site-header {
+    transform: none !important;
   }
 
   .hero-copy > *,

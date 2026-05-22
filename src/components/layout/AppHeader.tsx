@@ -3,14 +3,25 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { WalletConnect } from "./WalletConnect";
 import { getAccountAddress } from "../../lib/wallet/address";
+import { useEffect, useState } from "react";
 
 export function AppHeader() {
   const wallet = useWallet();
   const address = getAccountAddress(wallet.account);
   const profileHref = address ? `/u/${address}` : "/vault";
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsScrolled(window.scrollY > 18);
+
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+
+    return () => window.removeEventListener("scroll", update);
+  }, []);
 
   return (
-    <header className="site-header">
+    <header className={`site-header ${isScrolled ? "scrolled" : ""}`}>
       <Link className="brand" to="/" aria-label="Oria home">
         <span className="brand-mark">
           <img src="/brand/oria-mark.svg" alt="" />

@@ -5,7 +5,8 @@ import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useSpaces } from "../hooks/useSpaces";
 import { getPreviewKind } from "../lib/utils/files";
 import { formatBytes } from "../lib/utils/format";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useGsapStagger } from "../hooks/useGsapStagger";
 import type { Space, SpaceVisibility } from "../types/space";
 
 type SortMode = "newest" | "largest" | "files";
@@ -27,6 +28,7 @@ export function SpacesPage() {
   const [visibility, setVisibility] = useState<VisibilityFilter>("all");
   const [media, setMedia] = useState<MediaFilter>("all");
   const [sort, setSort] = useState<SortMode>("newest");
+  const gridRef = useRef<HTMLElement | null>(null);
   const allSpaces = useSpaces().filter((space) => space.network === activeNetwork);
 
   const spaces = useMemo(() => {
@@ -53,6 +55,7 @@ export function SpacesPage() {
 
   const totalBytes = allSpaces.reduce((sum, space) => sum + getSpaceSize(space), 0);
   const paidCount = allSpaces.filter((space) => space.visibility === "paid").length;
+  useGsapStagger(gridRef, [spaces.map((space) => space.id).join("|")], ".space-card");
 
   return (
     <>
@@ -132,7 +135,7 @@ export function SpacesPage() {
         </section>
 
         {spaces.length > 0 ? (
-          <section className="space-list marketplace-grid">
+          <section ref={gridRef} className="space-list marketplace-grid">
             {spaces.map((space) => (
               <SpaceCard key={space.id} space={space} />
             ))}
