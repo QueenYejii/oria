@@ -19,7 +19,7 @@ export function createShelbyClient(network: OriaNetwork) {
       apiKey: import.meta.env.VITE_SHELBY_API_KEY || undefined,
     },
     indexer: {
-      baseUrl: config.aptosIndexerUrl,
+      baseUrl: import.meta.env.VITE_SHELBY_INDEXER_URL || config.shelbyIndexerUrl,
       apiKey: import.meta.env.VITE_APTOS_API_KEY || undefined,
     },
   });

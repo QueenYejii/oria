@@ -10,6 +10,8 @@ export const shelbyNetworks = {
     aptosNodeUrl: "https://api.shelbynet.shelby.xyz/v1",
     aptosIndexerUrl: "https://api.shelbynet.shelby.xyz/v1/graphql",
     shelbyRpcUrl: "https://api.shelbynet.shelby.xyz/shelby",
+    shelbyIndexerUrl:
+      "https://api.shelbynet.aptoslabs.com/nocode/v1/public/alias/shelby/shelbynet/v1/graphql",
     description: "Best for protocol experiments where reset risk is acceptable.",
   },
   testnet: {
@@ -20,6 +22,8 @@ export const shelbyNetworks = {
     aptosNodeUrl: "https://api.testnet.aptoslabs.com/v1",
     aptosIndexerUrl: "https://api.testnet.aptoslabs.com/v1/graphql",
     shelbyRpcUrl: "https://api.testnet.shelby.xyz/shelby",
+    shelbyIndexerUrl:
+      "https://api.testnet.aptoslabs.com/nocode/v1/public/alias/shelby/testnet/v1/graphql",
     description: "Best for stable demos, portfolio flows, and repeatable testing.",
   },
 } as const satisfies Record<string, OriaNetworkConfig>;
