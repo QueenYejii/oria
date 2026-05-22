@@ -8,7 +8,11 @@ import { useCreateSpace } from "../hooks/useCreateSpace";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useToasts } from "../providers/ToastProvider";
 import { getErrorMessage } from "../lib/utils/errors";
-import { getAccountAddress, normalizeNetworkName } from "../lib/wallet/address";
+import {
+  getAccountAddress,
+  getWalletNetworkLabel,
+  isWalletNetworkCompatible,
+} from "../lib/wallet/address";
 import { shortenAddress } from "../lib/utils/format";
 import type { SpaceVisibility } from "../types/space";
 
@@ -26,10 +30,13 @@ export function CreateSpacePage() {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const address = getAccountAddress(wallet.account);
-  const walletNetwork = normalizeNetworkName(wallet.network?.name);
-  const expectedNetwork = normalizeNetworkName(networkConfig.aptosNetwork);
+  const walletNetworkLabel = getWalletNetworkLabel(wallet.network);
+  const walletNetworkCompatible = isWalletNetworkCompatible({
+    walletNetwork: wallet.network,
+    expectedNetwork: networkConfig.aptosNetwork,
+  });
   const networkMismatch = Boolean(
-    wallet.connected && walletNetwork && walletNetwork !== expectedNetwork
+    wallet.connected && wallet.network?.name && !walletNetworkCompatible
   );
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -79,8 +86,14 @@ export function CreateSpacePage() {
             <p>{address ? `Wallet ${shortenAddress(address)}` : "Connect a wallet from the header to publish."}</p>
             {networkMismatch && (
               <p className="form-error">
-                Wallet reports {wallet.network?.name}. Switch it to {networkConfig.label} before
+                Wallet reports {walletNetworkLabel}. Switch it to {networkConfig.label} before
                 publishing.
+              </p>
+            )}
+            {wallet.connected && !networkMismatch && wallet.network?.name === "custom" && (
+              <p className="form-note">
+                Petra reports Shelbynet as a custom network. Oria will publish this Space to
+                Shelbynet.
               </p>
             )}
           </div>
