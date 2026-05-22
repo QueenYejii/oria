@@ -25,6 +25,10 @@ function readRecords(): LocalPaymentRecord[] {
   }
 }
 
+export function listLocalPayments() {
+  return readRecords().sort((a, b) => b.paidAt - a.paidAt);
+}
+
 export function hasLocalPayment(params: {
   spaceId: string;
   network: OriaNetwork;

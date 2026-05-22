@@ -1,9 +1,25 @@
+import { Eye, FileWarning } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useActiveNetwork } from "../../hooks/useActiveNetwork";
 import { createShelbyClient } from "../../lib/shelby/client";
+import { getPreviewKind } from "../../lib/utils/files";
+import { formatBytes } from "../../lib/utils/format";
 import type { Space, SpaceFile } from "../../types/space";
 
-function getPreviewFile(files: SpaceFile[]) {
+const largePreviewThreshold = 35 * 1024 * 1024;
+
+function getPreviewFiles(files: SpaceFile[]) {
+  return files.filter(
+    (file) =>
+      file.mimeType.startsWith("image/") ||
+      file.mimeType.startsWith("video/") ||
+      file.mimeType.startsWith("audio/") ||
+      file.mimeType === "application/pdf" ||
+      file.mimeType.includes("json"),
+  );
+}
+
+function getDefaultPreviewFile(files: SpaceFile[]) {
   return (
     files.find((file) => file.mimeType.startsWith("image/")) ??
     files.find((file) => file.mimeType.startsWith("video/")) ??
@@ -19,10 +35,21 @@ export function SpacePreview({ space, canPreview }: { space: Space; canPreview: 
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textPreview, setTextPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const previewFile = useMemo(() => getPreviewFile(space.files), [space.files]);
+  const previewFiles = useMemo(() => getPreviewFiles(space.files), [space.files]);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const defaultPreviewFile = useMemo(() => getDefaultPreviewFile(space.files), [space.files]);
+  const previewFile =
+    previewFiles.find((file) => file.id === selectedFileId) ?? defaultPreviewFile ?? null;
+  const isLargePreview = Boolean(previewFile && previewFile.size > largePreviewThreshold);
 
   useEffect(() => {
-    if (!previewFile || !canPreview) {
+    setSelectedFileId(null);
+    setShouldLoad(false);
+  }, [space.id]);
+
+  useEffect(() => {
+    if (!previewFile || !canPreview || (isLargePreview && !shouldLoad)) {
       setObjectUrl(null);
       setTextPreview(null);
       return;
@@ -66,34 +93,76 @@ export function SpacePreview({ space, canPreview }: { space: Space; canPreview: 
       cancelled = true;
       if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl);
     };
-  }, [activeNetwork, canPreview, previewFile, space.creator, space.network]);
+  }, [activeNetwork, canPreview, isLargePreview, previewFile, shouldLoad, space.creator, space.network]);
 
   if (!previewFile) return null;
 
   return (
     <section className="preview-panel">
-      <div className="section-label">
-        <p className="eyebrow">Preview</p>
-        <h2>{previewFile.fileName}</h2>
+      <div className="preview-header">
+        <div className="section-label">
+          <p className="eyebrow">Preview</p>
+          <h2>{previewFile.fileName}</h2>
+        </div>
+        <div className="preview-meta">
+          <span>{getPreviewKind(previewFile.mimeType)}</span>
+          <span>{formatBytes(previewFile.size)}</span>
+        </div>
       </div>
 
-      {!canPreview ? (
-        <div className="preview-locked">Unlock this Space to preview its media.</div>
-      ) : error ? (
-        <p className="form-error">{error}</p>
-      ) : textPreview ? (
-        <pre>{textPreview}</pre>
-      ) : objectUrl && previewFile.mimeType.startsWith("image/") ? (
-        <img src={objectUrl} alt={previewFile.fileName} />
-      ) : objectUrl && previewFile.mimeType.startsWith("video/") ? (
-        <video src={objectUrl} controls />
-      ) : objectUrl && previewFile.mimeType.startsWith("audio/") ? (
-        <audio src={objectUrl} controls />
-      ) : objectUrl && previewFile.mimeType === "application/pdf" ? (
-        <iframe src={objectUrl} title={previewFile.fileName} />
-      ) : (
-        <div className="preview-locked">Loading preview...</div>
-      )}
+      <div className="preview-layout">
+        <div className="preview-stage">
+          {!canPreview ? (
+            <div className="preview-locked">
+              <FileWarning size={28} />
+              <strong>Unlock this Space to preview its media.</strong>
+            </div>
+          ) : error ? (
+            <p className="form-error">{error}</p>
+          ) : isLargePreview && !shouldLoad ? (
+            <div className="preview-locked">
+              <Eye size={28} />
+              <strong>Large preview paused.</strong>
+              <p>{formatBytes(previewFile.size)} will load only when you request it.</p>
+              <button className="button primary" type="button" onClick={() => setShouldLoad(true)}>
+                Load preview
+              </button>
+            </div>
+          ) : textPreview ? (
+            <pre>{textPreview}</pre>
+          ) : objectUrl && previewFile.mimeType.startsWith("image/") ? (
+            <img src={objectUrl} alt={previewFile.fileName} loading="lazy" decoding="async" />
+          ) : objectUrl && previewFile.mimeType.startsWith("video/") ? (
+            <video src={objectUrl} controls preload="metadata" />
+          ) : objectUrl && previewFile.mimeType.startsWith("audio/") ? (
+            <audio src={objectUrl} controls preload="metadata" />
+          ) : objectUrl && previewFile.mimeType === "application/pdf" ? (
+            <iframe src={objectUrl} title={previewFile.fileName} loading="lazy" />
+          ) : (
+            <div className="preview-locked">Loading preview...</div>
+          )}
+        </div>
+
+        {previewFiles.length > 1 && (
+          <div className="preview-rail" aria-label="Previewable files">
+            {previewFiles.map((file) => (
+              <button
+                key={file.id}
+                type="button"
+                className={file.id === previewFile.id ? "active" : ""}
+                onClick={() => {
+                  setSelectedFileId(file.id);
+                  setShouldLoad(file.size <= largePreviewThreshold);
+                }}
+              >
+                <span>{getPreviewKind(file.mimeType)}</span>
+                <strong>{file.fileName}</strong>
+                <small>{formatBytes(file.size)}</small>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

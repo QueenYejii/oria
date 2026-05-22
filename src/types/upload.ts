@@ -6,6 +6,7 @@ export type UploadItemStatus =
   | "uploading"
   | "indexing"
   | "published"
+  | "cancelled"
   | "failed";
 
 export type UploadItem = {
@@ -13,5 +14,6 @@ export type UploadItem = {
   file: File;
   status: UploadItemStatus;
   progressLabel: string;
+  progress?: number;
   error?: string;
 };

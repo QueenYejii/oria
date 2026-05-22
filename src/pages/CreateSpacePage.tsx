@@ -6,6 +6,7 @@ import { UploadDropzone } from "../components/upload/UploadDropzone";
 import { UploadQueue } from "../components/upload/UploadQueue";
 import { useCreateSpace } from "../hooks/useCreateSpace";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
+import { useToasts } from "../providers/ToastProvider";
 import { getErrorMessage } from "../lib/utils/errors";
 import { getAccountAddress, normalizeNetworkName } from "../lib/wallet/address";
 import { shortenAddress } from "../lib/utils/format";
@@ -14,8 +15,9 @@ import type { SpaceVisibility } from "../types/space";
 export function CreateSpacePage() {
   const navigate = useNavigate();
   const wallet = useWallet();
+  const { notify } = useToasts();
   const { activeNetwork, networkConfig } = useActiveNetwork();
-  const { createSpace, retryLastUpload, canRetry, uploadItems, isUploading } = useCreateSpace();
+  const { createSpace, retryLastUpload, cancelUpload, canRetry, uploadItems, isUploading } = useCreateSpace();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<SpaceVisibility>("public");
@@ -46,9 +48,16 @@ export function CreateSpacePage() {
           .filter(Boolean),
         files,
       });
+      notify({
+        tone: "success",
+        title: "Space published",
+        message: `${space.title} is now saved with manifest v${space.manifestVersion}.`,
+      });
       navigate(`/spaces/${space.id}`);
     } catch (caught) {
-      setError(getErrorMessage(caught));
+      const message = getErrorMessage(caught);
+      setError(message);
+      notify({ tone: "error", title: "Publish failed", message });
     }
   };
 
@@ -137,7 +146,7 @@ export function CreateSpacePage() {
           )}
 
           <UploadDropzone files={files} onFilesChange={setFiles} />
-          <UploadQueue items={uploadItems} />
+          <UploadQueue items={uploadItems} onCancel={isUploading ? cancelUpload : undefined} />
 
           {error && <p className="form-error">{error}</p>}
 

@@ -80,3 +80,26 @@ export async function purchaseSpaceOnChain(params: {
 
   return response.hash;
 }
+
+export async function updateSpaceManifestOnChain(params: {
+  space: Space;
+  signAndSubmitTransaction: SignAndSubmitTransaction;
+}) {
+  const registryAddress = getRegistryAddress();
+  if (!registryAddress || !params.space.manifestBlobName || !params.space.manifestHash) return null;
+
+  const response = await params.signAndSubmitTransaction({
+    data: {
+      function: `${registryAddress}::space_registry::update_manifest`,
+      functionArguments: [
+        registryAddress,
+        params.space.id,
+        params.space.manifestBlobName,
+        Array.from(hexToBytes(params.space.manifestHash)),
+        params.space.manifestVersion,
+      ],
+    },
+  });
+
+  return response.hash;
+}

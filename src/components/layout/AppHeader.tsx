@@ -22,6 +22,7 @@ export function AppHeader() {
         <NavLink to="/create">Create</NavLink>
         <NavLink to="/spaces">Discover</NavLink>
         <NavLink to={profileHref}>Profile</NavLink>
+        <NavLink to="/payments">Payments</NavLink>
         <NavLink className="nav-vault-mobile" to="/vault">
           Vault
         </NavLink>

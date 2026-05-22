@@ -1,6 +1,6 @@
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useActiveNetwork } from "./useActiveNetwork";
 import { createShelbyClient } from "../lib/shelby/client";
 import { encodeSpaceManifest } from "../lib/spaces/manifest";
@@ -32,12 +32,14 @@ export function useCreateSpace() {
   const [items, setItems] = useState<UploadItem[]>([]);
   const [createdSpace, setCreatedSpace] = useState<Space | null>(null);
   const [lastInput, setLastInput] = useState<CreateSpaceInput | null>(null);
+  const cancelRequestedRef = useRef(false);
 
   const updateAll = (patch: Partial<UploadItem>) => {
     setItems((current) => current.map((item) => ({ ...item, ...patch })));
   };
 
   const createSpace = async (input: CreateSpaceInput) => {
+    cancelRequestedRef.current = false;
     setLastInput(input);
     const creator = getAccountAddress(wallet.account);
 
@@ -47,6 +49,10 @@ export function useCreateSpace() {
 
     if (input.files.length === 0) {
       throw new Error("Add at least one file before publishing.");
+    }
+
+    if (input.files.some((file) => file.size === 0)) {
+      throw new Error("Remove empty files before publishing.");
     }
 
     if (!input.title.trim()) {
@@ -71,6 +77,12 @@ export function useCreateSpace() {
     );
 
     try {
+      const assertNotCancelled = () => {
+        if (cancelRequestedRef.current) {
+          throw new Error("Upload cancelled before it finished.");
+        }
+      };
+
       updateAll({ status: "reading", progressLabel: "Preparing files" });
 
       const blobs = await Promise.all(
@@ -79,6 +91,8 @@ export function useCreateSpace() {
           blobData: await fileToUint8Array(file),
         }))
       );
+
+      assertNotCancelled();
 
       setItems((current) =>
         current.map((item) => ({
@@ -92,6 +106,9 @@ export function useCreateSpace() {
 
       const expirationMicros = now * 1000 + thirtyDaysInMicros;
 
+      assertNotCancelled();
+      updateAll({ status: "uploading", progressLabel: "Uploading Shelby blobs" });
+
       await uploadBlobs.mutateAsync({
         signer: {
           account: creator,
@@ -102,6 +119,7 @@ export function useCreateSpace() {
         maxConcurrentUploads: 3,
       });
 
+      assertNotCancelled();
       updateAll({ status: "published", progressLabel: "Published" });
 
       const files: SpaceFile[] = input.files.map((file, index) => ({
@@ -157,6 +175,7 @@ export function useCreateSpace() {
 
       updateAll({ status: "indexing", progressLabel: "Writing manifest" });
 
+      assertNotCancelled();
       await uploadBlobs.mutateAsync({
         signer: {
           account: creator,
@@ -175,6 +194,7 @@ export function useCreateSpace() {
       let registryTxHash: string | undefined;
       updateAll({ status: "indexing", progressLabel: "Registering Space" });
 
+      assertNotCancelled();
       registryTxHash =
         (await registerSpaceOnChain({
           space: indexedSpaceDraft,
@@ -194,6 +214,15 @@ export function useCreateSpace() {
 
       return space;
     } catch (error) {
+      if (cancelRequestedRef.current) {
+        updateAll({
+          status: "cancelled",
+          progressLabel: "Cancelled",
+          error: "Upload was cancelled. Already-submitted wallet transactions may still settle.",
+        });
+        throw new Error("Upload cancelled. You can retry from the saved form state.");
+      }
+
       updateAll({
         status: "failed",
         progressLabel: "Failed",
@@ -205,6 +234,13 @@ export function useCreateSpace() {
 
   return {
     createSpace,
+    cancelUpload: () => {
+      cancelRequestedRef.current = true;
+      updateAll({
+        status: "cancelled",
+        progressLabel: "Cancelling after current Shelby request",
+      });
+    },
     retryLastUpload: () => {
       if (!lastInput) {
         throw new Error("No failed upload is available to retry.");

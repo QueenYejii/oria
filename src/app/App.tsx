@@ -19,6 +19,9 @@ const CreatorPage = lazy(() =>
 const VaultPage = lazy(() =>
   import("../pages/VaultPage").then((module) => ({ default: module.VaultPage }))
 );
+const PaymentHistoryPage = lazy(() =>
+  import("../pages/PaymentHistoryPage").then((module) => ({ default: module.PaymentHistoryPage }))
+);
 
 export function App() {
   return (
@@ -39,6 +42,7 @@ export function App() {
             <Route path="/spaces/:spaceId" element={<SpaceDetailPage />} />
             <Route path="/u/:address" element={<CreatorPage />} />
             <Route path="/vault" element={<VaultPage />} />
+            <Route path="/payments" element={<PaymentHistoryPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
