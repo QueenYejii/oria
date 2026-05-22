@@ -17,7 +17,7 @@ import { getErrorMessage } from "../lib/utils/errors";
 import { useDownloadBlob } from "../hooks/useDownloadBlob";
 import { useSpace } from "../hooks/useSpaces";
 import type { OriaNetwork } from "../types/network";
-import { formatDate, shortenAddress } from "../lib/utils/format";
+import { formatBytes, formatDate, shortenAddress } from "../lib/utils/format";
 import { sha256Hex } from "../lib/utils/hash";
 import { useToasts } from "../providers/ToastProvider";
 import type { Space, SpaceVisibility } from "../types/space";
@@ -69,6 +69,7 @@ export function SpaceDetailPage() {
       })
     : null;
   const shareUrl = useMemo(() => (space ? createShareUrl(space) : ""), [space]);
+  const totalBytes = space?.files.reduce((sum, file) => sum + file.size, 0) ?? 0;
 
   useEffect(() => {
     if (!space) return;
@@ -282,19 +283,47 @@ export function SpaceDetailPage() {
           <>
             <section className="detail-hero">
               <div>
-                <p className="eyebrow">{space.network}</p>
+                <div className="detail-eyebrow-row">
+                  <p className="eyebrow">{space.network}</p>
+                  <span className="network-badge stable">{space.visibility.replace("_", " ")}</span>
+                </div>
                 <h1>{space.title}</h1>
                 <p>{space.description || "No description added."}</p>
+                <div className="detail-summary-grid" aria-label="Space summary">
+                  <article>
+                    <span>Files</span>
+                    <strong>{space.files.length}</strong>
+                  </article>
+                  <article>
+                    <span>Storage</span>
+                    <strong>{formatBytes(totalBytes)}</strong>
+                  </article>
+                  <article>
+                    <span>Manifest</span>
+                    <strong>v{space.manifestVersion}</strong>
+                  </article>
+                </div>
               </div>
-              <aside className="status-panel">
-                <span className="tiny-label">Owner</span>
-                <strong>{shortenAddress(space.creator)}</strong>
-                <Link to={`/u/${space.creator}`}>View creator profile</Link>
-                <p>Published {formatDate(space.createdAt)}</p>
-                <p>Expires {formatDate(space.expiresAt)}</p>
-                <p>Manifest v{space.manifestVersion}</p>
-                {space.manifestHash && <p>Hash {space.manifestHash.slice(0, 12)}...</p>}
-                <span className="network-badge experimental">{space.visibility}</span>
+              <aside className="detail-registry-panel">
+                <div>
+                  <span className="tiny-label">Creator</span>
+                  <strong>{shortenAddress(space.creator)}</strong>
+                  <Link to={`/u/${space.creator}`}>Open profile</Link>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Published</dt>
+                    <dd>{formatDate(space.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Retention</dt>
+                    <dd>{formatDate(space.expiresAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Hash</dt>
+                    <dd>{space.manifestHash ? `${space.manifestHash.slice(0, 14)}...` : "Pending"}</dd>
+                  </div>
+                </dl>
                 {space.payment && (
                   <p>
                     Price {(space.payment.priceOctas / 100_000_000).toLocaleString()}{" "}

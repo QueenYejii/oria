@@ -1,6 +1,18 @@
 import { Square } from "lucide-react";
 import type { UploadItem } from "../../types/upload";
 
+const statusLabels: Record<UploadItem["status"], string> = {
+  queued: "Queued",
+  reading: "Preparing",
+  ready: "Ready",
+  signing: "Wallet",
+  uploading: "Uploading",
+  indexing: "Indexing",
+  published: "Live",
+  failed: "Needs attention",
+  cancelled: "Cancelled",
+};
+
 export function UploadQueue({ items, onCancel }: { items: UploadItem[]; onCancel?: () => void }) {
   if (items.length === 0) return null;
   const canCancel = Boolean(onCancel && items.some((item) => !["published", "failed", "cancelled"].includes(item.status)));
@@ -23,7 +35,7 @@ export function UploadQueue({ items, onCancel }: { items: UploadItem[]; onCancel
             <strong>{item.file.name}</strong>
             <p>{item.error ?? item.progressLabel}</p>
           </div>
-          <span>{item.status}</span>
+          <span>{statusLabels[item.status]}</span>
         </article>
       ))}
     </div>

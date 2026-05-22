@@ -57,8 +57,8 @@ export function CreateSpacePage() {
       });
       notify({
         tone: "success",
-        title: "Space published",
-        message: `${space.title} is now saved with manifest v${space.manifestVersion}.`,
+        title: "Space is live",
+        message: `${space.title} is indexed on Shelbynet and ready in Discover.`,
       });
       navigate(`/spaces/${space.id}`);
     } catch (caught) {

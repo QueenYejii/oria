@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SpaceThumbnail } from "./SpaceThumbnail";
 import { formatBytes, formatDate, shortenAddress } from "../../lib/utils/format";
 import { getPreviewKind } from "../../lib/utils/files";
 import type { Space } from "../../types/space";
@@ -6,14 +7,10 @@ import type { Space } from "../../types/space";
 export function SpaceCard({ space }: { space: Space }) {
   const totalSize = space.files.reduce((sum, file) => sum + file.size, 0);
   const fileKinds = Array.from(new Set(space.files.map((file) => getPreviewKind(file.mimeType)))).slice(0, 3);
-  const heroKind = fileKinds[0] ?? "Space";
 
   return (
     <Link className="space-card" to={`/spaces/${space.id}`}>
-      <div className="space-card-art" aria-hidden="true">
-        <span>{heroKind}</span>
-        <i />
-      </div>
+      <SpaceThumbnail space={space} />
       <div>
         <div className="space-card-kickers">
           <span className="network-badge stable">{space.network}</span>
