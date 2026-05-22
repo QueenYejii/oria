@@ -371,6 +371,31 @@ Current production URL:
 https://oria-queenyeji.vercel.app
 ```
 
+Current Shelbynet registry:
+
+```text
+0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904
+```
+
+Registry publish transaction:
+
+```text
+0xe09b5f3d4440fd70ca2d80376556396c2f34d2e80d966a16bd10059f4eb6f671
+```
+
+Registry initialize transaction:
+
+```text
+0x9af49d5a75ff2f96eee9d7c200f7ca5bb7a3414ec43d45a25c40a169df3d07c6
+```
+
+Production discovery API:
+
+```text
+https://oria-queenyeji.vercel.app/api/health
+https://oria-queenyeji.vercel.app/api/spaces
+```
+
 Recommended production topology:
 
 - Vercel for the frontend.
