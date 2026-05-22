@@ -25,6 +25,10 @@ export function useGsapLandingMotion() {
 
       const timeline = gsap.timeline({ defaults: { ease: "power4.out" } });
 
+      if (stageChildren.length) {
+        gsap.set(stageChildren, { autoAlpha: 1, clearProps: "visibility,opacity" });
+      }
+
       if (header) {
         timeline.from(header, { y: -22, autoAlpha: 0, duration: 0.62 });
       }
@@ -34,11 +38,32 @@ export function useGsapLandingMotion() {
       }
 
       if (heroStage) {
-        timeline.from(heroStage, { y: 36, scale: 0.975, autoAlpha: 0, duration: 0.82 }, "-=0.56");
+        timeline.fromTo(
+          heroStage,
+          { y: 36, scale: 0.975, autoAlpha: 0 },
+          {
+            y: 0,
+            scale: 1,
+            autoAlpha: 1,
+            duration: 0.82,
+            clearProps: "transform,opacity,visibility",
+          },
+          "-=0.56",
+        );
       }
 
       if (stageChildren.length) {
-        timeline.from(stageChildren, { y: 18, autoAlpha: 0, duration: 0.48, stagger: 0.055 }, "-=0.54");
+        timeline.fromTo(
+          stageChildren,
+          { y: 14 },
+          {
+            y: 0,
+            duration: 0.42,
+            stagger: 0.045,
+            clearProps: "transform,opacity,visibility",
+          },
+          "-=0.48",
+        );
       }
 
       const revealTargets = gsap.utils.toArray<HTMLElement>("[data-reveal]").filter(

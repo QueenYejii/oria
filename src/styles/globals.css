@@ -803,6 +803,8 @@ h1 {
 .stage-shell > :not(.stage-sheen) {
   position: relative;
   z-index: 1;
+  opacity: 1;
+  visibility: visible;
 }
 
 .stage-topbar,
