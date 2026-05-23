@@ -1,3 +1,5 @@
+import { aptos, getConfig, getRecord } from "./_discovery.js";
+
 const RECEIPTS_KEY = "oria:receipts:v1";
 const memoryReceipts = new Map();
 
@@ -10,6 +12,90 @@ function getRedisConfig() {
 
 function normalizeAddress(value) {
   return String(value || "").toLowerCase();
+}
+
+function canonicalAddress(value) {
+  const raw = String(value || "").toLowerCase().replace(/^0x/, "");
+  const trimmed = raw.replace(/^0+/, "") || "0";
+  return `0x${trimmed}`;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function getTransactionByHash(txHash) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      return await aptos(`/transactions/by_hash/${encodeURIComponent(txHash)}`);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 7) await sleep(750);
+    }
+  }
+
+  throw lastError || new Error("Transaction was not found.");
+}
+
+function assertReceiptTransaction(receipt, transaction, spaceRecord) {
+  const { registryAddress } = getConfig();
+  const payload = transaction?.payload || {};
+  const expectedFunction = `${canonicalAddress(registryAddress)}::space_registry::purchase_space`;
+  const actualFunction = String(payload.function || "").replace(/^0x0+/, "0x").toLowerCase();
+  const args = Array.isArray(payload.arguments) ? payload.arguments : [];
+
+  if (!transaction || transaction.type !== "user_transaction") {
+    throw new Error("Receipt transaction is not a user transaction.");
+  }
+
+  if (!transaction.success) {
+    throw new Error(`Receipt transaction did not execute successfully: ${transaction.vm_status || "unknown status"}.`);
+  }
+
+  if (canonicalAddress(transaction.sender) !== canonicalAddress(receipt.payer)) {
+    throw new Error("Receipt payer does not match the transaction sender.");
+  }
+
+  if (actualFunction !== expectedFunction) {
+    throw new Error("Receipt transaction is not an Oria purchase_space call.");
+  }
+
+  if (canonicalAddress(args[0]) !== canonicalAddress(registryAddress) || String(args[1]) !== receipt.spaceId) {
+    throw new Error("Receipt transaction does not unlock this Space.");
+  }
+
+  if (spaceRecord && canonicalAddress(spaceRecord.creator) !== canonicalAddress(receipt.creator)) {
+    throw new Error("Receipt creator does not match the registered Space creator.");
+  }
+
+  if (spaceRecord && String(spaceRecord.network) !== String(receipt.network)) {
+    throw new Error("Receipt network does not match the registered Space.");
+  }
+}
+
+async function verifyReceipt(input) {
+  const receipt = normalizeReceipt(input);
+  const [transaction, spaceRecord] = await Promise.all([
+    getTransactionByHash(receipt.txHash),
+    getRecord(receipt.spaceId),
+  ]);
+
+  assertReceiptTransaction(receipt, transaction, spaceRecord);
+
+  return {
+    ...receipt,
+    amountOctas: Number(spaceRecord?.priceOctas || receipt.amountOctas || 0),
+    creator: spaceRecord?.creator || receipt.creator,
+    network: spaceRecord?.network || receipt.network,
+    paidAt: transaction.timestamp ? Math.floor(Number(transaction.timestamp) / 1000) : receipt.paidAt,
+    chainStatus: "verified",
+    verifiedAt: Date.now(),
+    transactionVersion: transaction.version ? String(transaction.version) : undefined,
+  };
 }
 
 function normalizeReceipt(input) {
@@ -64,7 +150,7 @@ async function redisCommand(command) {
 }
 
 export async function saveReceipt(input) {
-  const receipt = normalizeReceipt(input);
+  const receipt = await verifyReceipt(input);
   const redis = getRedisConfig();
 
   if (redis) {

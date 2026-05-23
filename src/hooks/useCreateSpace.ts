@@ -19,12 +19,14 @@ type CreateSpaceInput = {
   visibility: SpaceVisibility;
   priceOctas?: number;
   allowlist?: string[];
+  publicCoverFile?: File | null;
   files: File[];
 };
 
 const thirtyDaysInMicros = 30 * 24 * 60 * 60 * 1_000_000;
 const maxFileSize = 2 * 1024 * 1024 * 1024;
 const maxTotalSize = 5 * 1024 * 1024 * 1024;
+const maxCoverSize = 12 * 1024 * 1024;
 const blockedExtensions = new Set(["exe", "bat", "cmd", "com", "msi", "ps1", "scr"]);
 
 export function useCreateSpace() {
@@ -65,6 +67,16 @@ export function useCreateSpace() {
       throw new Error("Remove empty files before publishing.");
     }
 
+    if (input.publicCoverFile) {
+      if (!input.publicCoverFile.type.startsWith("image/")) {
+        throw new Error("Public cover must be an image file.");
+      }
+
+      if (input.publicCoverFile.size > maxCoverSize) {
+        throw new Error("Public cover must be 12 MB or smaller.");
+      }
+    }
+
     const totalSize = input.files.reduce((sum, file) => sum + file.size, 0);
     if (input.files.some((file) => file.size > maxFileSize)) {
       throw new Error("One or more files are larger than the current 2 GB per-file limit.");
@@ -92,12 +104,16 @@ export function useCreateSpace() {
 
     setCreatedSpace(null);
     setIsPublishing(true);
+    const hasPublicCover = Boolean(input.publicCoverFile);
+    const contentOffset = hasPublicCover ? 1 : 0;
+    const queueFiles = input.publicCoverFile ? [input.publicCoverFile, ...input.files] : input.files;
+
     setItems(
-      input.files.map((file) => ({
+      queueFiles.map((file, index) => ({
         id: createId("upload"),
         file,
         status: "queued",
-        progressLabel: "Queued",
+        progressLabel: hasPublicCover && index === 0 ? "Public cover queued" : "Queued",
       }))
     );
 
@@ -110,9 +126,33 @@ export function useCreateSpace() {
 
       updateAll({ status: "reading", progressLabel: "Preparing files", progress: 8 });
 
+      let publicCoverBlob:
+        | {
+            blobName: string;
+            blobData: Uint8Array;
+          }
+        | null = null;
+
+      if (input.publicCoverFile) {
+        updateItem(0, {
+          status: "reading",
+          progressLabel: "Preparing public cover",
+          progress: 12,
+        });
+        publicCoverBlob = {
+          blobName: createBlobName({ spaceId, fileName: input.publicCoverFile.name, index: -1 }),
+          blobData: await fileToUint8Array(input.publicCoverFile),
+        };
+        updateItem(0, {
+          status: "ready",
+          progressLabel: "Public cover ready",
+          progress: 24,
+        });
+      }
+
       const blobs = await Promise.all(
         input.files.map(async (file, index) => {
-          updateItem(index, {
+          updateItem(index + contentOffset, {
             status: "reading",
             progressLabel: `Reading ${index + 1} of ${input.files.length}`,
             progress: 12,
@@ -121,7 +161,7 @@ export function useCreateSpace() {
             blobName: createBlobName({ spaceId, fileName: file.name, index }),
             blobData: await fileToUint8Array(file),
           };
-          updateItem(index, {
+          updateItem(index + contentOffset, {
             status: "ready",
             progressLabel: "Prepared for Shelby",
             progress: 24,
@@ -134,9 +174,34 @@ export function useCreateSpace() {
 
       const expirationMicros = now * 1000 + thirtyDaysInMicros;
 
+      if (publicCoverBlob) {
+        assertNotCancelled();
+        updateItem(0, {
+          status: "signing",
+          progressLabel: "Signing public cover",
+          progress: 34,
+        });
+
+        await uploadBlobs.mutateAsync({
+          signer: {
+            account: creator,
+            signAndSubmitTransaction: wallet.signAndSubmitTransaction,
+          },
+          blobs: [publicCoverBlob],
+          expirationMicros,
+          maxConcurrentUploads: 1,
+        });
+
+        updateItem(0, {
+          status: "published",
+          progressLabel: "Public cover stored on Shelby",
+          progress: 72,
+        });
+      }
+
       for (let index = 0; index < blobs.length; index += 1) {
         assertNotCancelled();
-        updateItem(index, {
+        updateItem(index + contentOffset, {
           status: "signing",
           progressLabel: `Wallet signature ${index + 1} of ${blobs.length}`,
           progress: 34,
@@ -152,7 +217,7 @@ export function useCreateSpace() {
           maxConcurrentUploads: 1,
         });
 
-        updateItem(index, {
+        updateItem(index + contentOffset, {
           status: "published",
           progressLabel: "Blob stored on Shelby",
           progress: 72,
@@ -171,6 +236,14 @@ export function useCreateSpace() {
       }));
 
       const thumbnail = files.find((file) => file.mimeType.startsWith("image/"));
+      const publicCover = input.publicCoverFile && publicCoverBlob
+        ? {
+            blobName: publicCoverBlob.blobName,
+            fileName: input.publicCoverFile.name,
+            mimeType: input.publicCoverFile.type || "image/*",
+            size: input.publicCoverFile.size,
+          }
+        : null;
 
       const manifestBlobName = `oria/${spaceId}/manifest.json`;
       const spaceDraft: Space = {
@@ -179,7 +252,11 @@ export function useCreateSpace() {
         creator,
         title: input.title.trim(),
         description: input.description.trim(),
-        thumbnailBlobName: thumbnail?.blobName,
+        thumbnailBlobName: publicCover?.blobName ?? thumbnail?.blobName,
+        thumbnailFileName: publicCover?.fileName ?? thumbnail?.fileName,
+        thumbnailMimeType: publicCover?.mimeType ?? thumbnail?.mimeType,
+        thumbnailSize: publicCover?.size ?? thumbnail?.size,
+        thumbnailIsPublic: Boolean(publicCover) || input.visibility === "public",
         manifestBlobName,
         manifestVersion: 1,
         files,

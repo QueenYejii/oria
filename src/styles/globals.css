@@ -1240,6 +1240,66 @@ h1 {
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--teal) 13%, transparent);
 }
 
+.cover-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.9rem;
+  border: 1px solid color-mix(in oklch, var(--teal) 20%, var(--line));
+  border-radius: 1rem;
+  background:
+    radial-gradient(280px 120px at 0% 0%, color-mix(in oklch, var(--teal) 11%, transparent), transparent 74%),
+    color-mix(in oklch, var(--paper) 66%, transparent);
+}
+
+.cover-picker input {
+  display: none;
+}
+
+.cover-picker strong {
+  display: block;
+  margin-top: 0.18rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.cover-picker p {
+  max-width: 42rem;
+  margin-top: 0.18rem;
+  color: color-mix(in oklch, var(--ink) 58%, var(--paper));
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.cover-file-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.8rem;
+  max-width: 20rem;
+  padding: 0.6rem 0.65rem 0.6rem 0.85rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--teal) 13%, var(--paper));
+  color: color-mix(in oklch, var(--ink) 82%, var(--paper));
+  font-size: 0.82rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.cover-file-pill button {
+  display: inline-grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  background: color-mix(in oklch, var(--ink) 9%, transparent);
+  cursor: pointer;
+}
+
 .visibility-control {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2085,6 +2145,19 @@ h1 {
     color-mix(in oklch, var(--paper) 72%, transparent);
 }
 
+.receipt-ledger-row {
+  padding: 1.05rem;
+  border-radius: 1.28rem;
+}
+
+.receipt-ledger-row > div:first-child {
+  min-width: 0;
+}
+
+.receipt-ledger-row h2 {
+  max-width: 42rem;
+}
+
 .payment-badges {
   display: flex;
   flex-wrap: wrap;
@@ -2138,6 +2211,70 @@ h1 {
   background:
     linear-gradient(145deg, color-mix(in oklch, var(--paper) 74%, transparent), color-mix(in oklch, var(--clay) 10%, transparent)),
     color-mix(in oklch, var(--paper) 72%, transparent);
+}
+
+.receipt-command-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: stretch;
+  margin: 1rem 0 1.4rem;
+}
+
+.receipt-command-panel article,
+.receipt-command-link {
+  min-height: 8rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(320px 160px at 10% 0%, color-mix(in oklch, var(--teal) 11%, transparent), transparent 74%),
+    color-mix(in oklch, var(--paper) 72%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--paper) 88%, transparent);
+}
+
+.receipt-command-panel article {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+}
+
+.receipt-command-panel strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.8rem);
+  line-height: 1;
+}
+
+.receipt-command-panel p {
+  max-width: 34rem;
+  margin: 0.15rem 0 0;
+  color: color-mix(in oklch, var(--ink) 58%, var(--paper));
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.receipt-command-link {
+  display: grid;
+  place-items: center;
+  min-width: 13rem;
+  color: var(--paper);
+  text-align: center;
+  text-decoration: none;
+  font-weight: 950;
+  background:
+    radial-gradient(160px 120px at 30% 20%, color-mix(in oklch, var(--teal) 28%, transparent), transparent 72%),
+    var(--ink);
+  box-shadow:
+    0 18px 44px color-mix(in oklch, var(--ink) 16%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--paper) 12%, transparent);
+  transition: transform 180ms var(--ease-out-quint), box-shadow 180ms ease;
+}
+
+.receipt-command-link:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 22px 54px color-mix(in oklch, var(--ink) 18%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--paper) 16%, transparent);
 }
 
 .payment-state-card strong,
@@ -2228,6 +2365,102 @@ h1 {
 
 .sale-row {
   border-color: color-mix(in oklch, var(--teal) 24%, transparent);
+}
+
+.sales-controls {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(190px, 0.28fr);
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(145deg, color-mix(in oklch, var(--paper) 78%, transparent), color-mix(in oklch, var(--mist) 13%, transparent)),
+    color-mix(in oklch, var(--paper) 72%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--paper) 86%, transparent);
+}
+
+.sales-controls label {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.sales-controls span {
+  color: color-mix(in oklch, var(--ink) 58%, var(--paper));
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.sales-controls input,
+.sales-controls select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 0.78rem 0.85rem;
+  background: color-mix(in oklch, var(--paper) 64%, transparent);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 850;
+}
+
+.space-revenue-panel {
+  display: grid;
+  gap: 0.95rem;
+  margin-bottom: 1rem;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid color-mix(in oklch, var(--teal) 20%, var(--line));
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(500px 220px at 8% 0%, color-mix(in oklch, var(--teal) 12%, transparent), transparent 74%),
+    color-mix(in oklch, var(--paper) 72%, transparent);
+  box-shadow:
+    0 18px 60px color-mix(in oklch, var(--ink) 7%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--paper) 88%, transparent);
+}
+
+.space-revenue-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.space-revenue-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  min-height: 4.25rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in oklch, var(--ink) 8%, transparent);
+  border-radius: 1rem;
+  color: inherit;
+  text-decoration: none;
+  background: color-mix(in oklch, var(--paper) 66%, transparent);
+  transition: transform 180ms var(--ease-out-quint), border-color 180ms ease, background 180ms ease;
+}
+
+.space-revenue-row:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklch, var(--teal) 34%, transparent);
+  background: color-mix(in oklch, var(--paper) 82%, transparent);
+}
+
+.space-revenue-row strong,
+.space-revenue-row span {
+  display: block;
+}
+
+.space-revenue-row span {
+  margin-top: 0.15rem;
+  color: color-mix(in oklch, var(--ink) 56%, var(--paper));
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.space-revenue-row b {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
 }
 
 .sales-actions {
@@ -3429,6 +3662,8 @@ h1 {
   .workflow,
   .split-heading,
   .market-filters,
+  .sales-controls,
+  .receipt-command-panel,
   .preview-layout {
     grid-template-columns: 1fr;
   }
@@ -3512,6 +3747,16 @@ h1 {
   .preview-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .cover-picker,
+  .space-revenue-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cover-picker .button,
+  .receipt-command-link {
+    width: 100%;
   }
 
   .payment-row > div:last-child {

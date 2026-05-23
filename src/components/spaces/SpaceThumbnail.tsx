@@ -2,11 +2,26 @@ import { ImageOff } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createShelbyClient } from "../../lib/shelby/client";
 import { getPreviewKind } from "../../lib/utils/files";
-import type { Space } from "../../types/space";
+import type { Space, SpaceFile } from "../../types/space";
 
 const thumbnailSizeLimit = 8 * 1024 * 1024;
 
-function getThumbnailFile(space: Space) {
+function getThumbnailFile(space: Space): SpaceFile | null {
+  if (
+    space.thumbnailBlobName &&
+    space.thumbnailFileName &&
+    space.thumbnailMimeType &&
+    typeof space.thumbnailSize === "number"
+  ) {
+    return {
+      id: "public-cover",
+      blobName: space.thumbnailBlobName,
+      fileName: space.thumbnailFileName,
+      mimeType: space.thumbnailMimeType,
+      size: space.thumbnailSize,
+    };
+  }
+
   const byBlobName = space.thumbnailBlobName
     ? space.files.find((file) => file.blobName === space.thumbnailBlobName)
     : undefined;
@@ -19,7 +34,7 @@ export function SpaceThumbnail({ space }: { space: Space }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
   const fallbackKind = getPreviewKind(space.files[0]?.mimeType ?? "");
-  const isPrivatePreview = space.visibility !== "public";
+  const isPrivatePreview = space.visibility !== "public" && !space.thumbnailIsPublic;
   const privateLabel = space.visibility === "paid" ? "Paid preview" : "Wallet gated";
 
   useEffect(() => {

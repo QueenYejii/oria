@@ -22,7 +22,7 @@ function setCached(key, value, ttlMs) {
   return value;
 }
 
-function getConfig() {
+export function getConfig() {
   const registryAddress = process.env.ORIA_REGISTRY_ADDRESS || process.env.VITE_ORIA_REGISTRY_ADDRESS;
   const nodeUrl = process.env.APTOS_NODE_URL || process.env.VITE_APTOS_NODE_URL || defaultNodeUrl;
   const indexerUrl = process.env.APTOS_INDEXER_URL || process.env.VITE_APTOS_INDEXER_URL;
@@ -217,7 +217,7 @@ export function handleOptions(request, response) {
   return false;
 }
 
-async function aptos(path, init) {
+export async function aptos(path, init) {
   const { nodeUrl } = getConfig();
   const response = await fetch(`${nodeUrl}${path}`, {
     ...init,

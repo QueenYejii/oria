@@ -12,8 +12,10 @@ export type LocalPaymentRecord = {
   spaceTitle?: string;
   creator?: string;
   receiptId?: string;
-  source?: "registry" | "local";
+  source?: "registry" | "local" | "receipt_mirror";
   chainStatus?: "pending" | "verified" | "failed";
+  verifiedAt?: number;
+  transactionVersion?: string;
 };
 
 const STORAGE_KEY = "oria:payments:v1";
@@ -85,14 +87,22 @@ export async function mirrorPaymentReceipt(record: LocalPaymentRecord) {
   const baseUrl = getDiscoveryApiUrl();
   if (!baseUrl) return null;
 
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/receipts`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(record),
-  });
+  let response: Response | null = null;
 
-  if (!response.ok) {
-    throw new Error(`Receipt mirror returned ${response.status}.`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    response = await fetch(`${baseUrl.replace(/\/$/, "")}/receipts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(record),
+    });
+
+    if (response.ok || attempt === 2) break;
+    await new Promise((resolve) => window.setTimeout(resolve, 1400));
+  }
+
+  if (!response || !response.ok) {
+    const detail = response ? await response.text() : "";
+    throw new Error(`Receipt mirror returned ${response?.status ?? "unknown"}. ${detail}`);
   }
 
   return (await response.json()) as {

@@ -161,6 +161,25 @@ export function PaymentHistoryPage() {
           </article>
         </section>
 
+        <section className="receipt-command-panel" aria-label="Receipt health">
+          <article>
+            <span className="tiny-label">Mirror status</span>
+            <strong>{chainSource === "indexer" ? "Indexer synced" : "Local-first audit"}</strong>
+            <p>
+              Buyer receipts stay on this wallet first, then Oria mirrors verified purchases for
+              creator dashboards when the API can confirm the transaction.
+            </p>
+          </article>
+          <article>
+            <span className="tiny-label">Seller view</span>
+            <strong>{sales.length} paid unlock{sales.length === 1 ? "" : "s"}</strong>
+            <p>Incoming paid unlocks use registry purchases, with tx detail added from verified mirrored receipts.</p>
+          </article>
+          <Link className="receipt-command-link" to="/sales">
+            Open seller dashboard
+          </Link>
+        </section>
+
         {chainError && (
           <section className="payment-state-card">
             <div>
@@ -198,7 +217,7 @@ export function PaymentHistoryPage() {
               const space = getSpace(sale.spaceId);
 
               return (
-                <article key={`${sale.spaceId}-${sale.buyer}-${index}`} className="payment-row premium sale-row">
+                <article key={`${sale.spaceId}-${sale.buyer}-${index}`} className="payment-row premium sale-row receipt-ledger-row">
                   <div>
                     <div className="payment-badges">
                       <span className="network-badge stable">{sale.network}</span>
@@ -242,7 +261,7 @@ export function PaymentHistoryPage() {
               const title = record.spaceTitle ?? space?.title ?? "Imported paid Space";
 
               return (
-                <article key={`${record.spaceId}-${record.payer}-${record.txHash}`} className="payment-row premium">
+                <article key={`${record.spaceId}-${record.payer}-${record.txHash}`} className="payment-row premium receipt-ledger-row">
                   <div>
                     <div className="payment-badges">
                       <span className="network-badge stable">{record.network}</span>

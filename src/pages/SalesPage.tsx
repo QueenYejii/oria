@@ -24,6 +24,8 @@ export function SalesPage() {
   const [sales, setSales] = useState<CreatorSaleRecord[]>([]);
   const [storeMode, setStoreMode] = useState("registry");
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState("newest");
 
   useEffect(() => {
     if (!address) {
@@ -63,10 +65,63 @@ export function SalesPage() {
     () => new Set(sales.map((sale) => sale.spaceId)).size,
     [sales],
   );
+  const filteredSales = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const records = sales.filter((sale) => {
+      if (!needle) return true;
+      const space = getSpace(sale.spaceId);
+      const title = sale.spaceTitle ?? space?.title ?? "";
+
+      return (
+        title.toLowerCase().includes(needle) ||
+        sale.spaceId.toLowerCase().includes(needle) ||
+        sale.buyer.toLowerCase().includes(needle) ||
+        String(sale.txHash ?? "").toLowerCase().includes(needle)
+      );
+    });
+
+    return [...records].sort((a, b) => {
+      if (sortMode === "highest") return Number(b.amountOctas || 0) - Number(a.amountOctas || 0);
+      if (sortMode === "space") return (a.spaceTitle ?? a.spaceId).localeCompare(b.spaceTitle ?? b.spaceId);
+      return saleTimestamp(b) - saleTimestamp(a);
+    });
+  }, [query, sales, sortMode]);
+  const revenueBySpace = useMemo(() => {
+    const bySpace = new Map<
+      string,
+      {
+        spaceId: string;
+        title: string;
+        sales: number;
+        revenueOctas: number;
+        buyers: Set<string>;
+      }
+    >();
+
+    for (const sale of sales) {
+      const space = getSpace(sale.spaceId);
+      const current =
+        bySpace.get(sale.spaceId) ??
+        {
+          spaceId: sale.spaceId,
+          title: sale.spaceTitle ?? space?.title ?? "Paid Space",
+          sales: 0,
+          revenueOctas: 0,
+          buyers: new Set<string>(),
+        };
+
+      current.sales += 1;
+      current.revenueOctas += Number(sale.amountOctas || 0);
+      current.buyers.add(sale.buyer.toLowerCase());
+      bySpace.set(sale.spaceId, current);
+    }
+
+    return [...bySpace.values()].sort((a, b) => b.revenueOctas - a.revenueOctas);
+  }, [sales]);
   const exportCsv = () => {
     const rows = [
       ["space_id", "title", "buyer", "amount_apt", "paid_at", "tx_hash", "source"],
-      ...sales.map((sale) => {
+      ...filteredSales.map((sale) => {
         const space = getSpace(sale.spaceId);
         const paidAt = saleTimestamp(sale);
 
@@ -87,7 +142,7 @@ export function SalesPage() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `oria-sales-${activeNetwork}.csv`;
+    anchor.download = `oria-sales-${activeNetwork}${query ? "-filtered" : ""}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -154,9 +209,53 @@ export function SalesPage() {
           </section>
         )}
 
-        {sales.length > 0 ? (
+        {sales.length > 0 && (
+          <section className="sales-controls" aria-label="Sales filters">
+            <label>
+              <span>Search sales</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Space, buyer, tx hash..."
+              />
+            </label>
+            <label>
+              <span>Sort</span>
+              <select value={sortMode} onChange={(event) => setSortMode(event.target.value)}>
+                <option value="newest">Newest</option>
+                <option value="highest">Highest amount</option>
+                <option value="space">Space title</option>
+              </select>
+            </label>
+          </section>
+        )}
+
+        {revenueBySpace.length > 0 && (
+          <section className="space-revenue-panel" aria-label="Revenue by Space">
+            <div className="section-label">
+              <p className="eyebrow">Revenue by Space</p>
+              <h2>Top paid works.</h2>
+            </div>
+            <div className="space-revenue-list">
+              {revenueBySpace.slice(0, 5).map((space) => (
+                <Link key={space.spaceId} to={`/spaces/${space.spaceId}`} className="space-revenue-row">
+                  <div>
+                    <strong>{space.title}</strong>
+                    <span>
+                      {space.sales} sale{space.sales === 1 ? "" : "s"} · {space.buyers.size} buyer
+                      {space.buyers.size === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <b>{(space.revenueOctas / 100_000_000).toLocaleString()} APT</b>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {filteredSales.length > 0 ? (
           <section className="payment-list">
-            {sales.map((sale, index) => {
+            {filteredSales.map((sale, index) => {
               const space = getSpace(sale.spaceId);
               const title = sale.spaceTitle ?? space?.title ?? "Paid Space";
               const paidAt = saleTimestamp(sale);
@@ -190,14 +289,20 @@ export function SalesPage() {
           </section>
         ) : (
           <section className="empty-state">
-            <h2>No sales yet.</h2>
-            <p>
-              When buyers unlock your paid Spaces, they will appear here with buyer wallet, amount,
-              and transaction details when mirrored.
-            </p>
-            <Link className="button primary" to="/create">
-              Publish paid Space
-            </Link>
+            <h2>{sales.length > 0 ? "No sales match this filter." : "No sales yet."}</h2>
+            {sales.length > 0 ? (
+              <p>Try a different buyer wallet, Space title, or transaction hash.</p>
+            ) : (
+              <>
+                <p>
+                  When buyers unlock your paid Spaces, they will appear here with buyer wallet, amount,
+                  and transaction details when mirrored.
+                </p>
+                <Link className="button primary" to="/create">
+                  Publish paid Space
+                </Link>
+              </>
+            )}
           </section>
         )}
       </main>

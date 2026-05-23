@@ -1,5 +1,6 @@
 import { AppHeader } from "../components/layout/AppHeader";
-import { useEffect, useState, type FormEvent } from "react";
+import { ImagePlus, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { UploadDropzone } from "../components/upload/UploadDropzone";
@@ -20,7 +21,7 @@ import {
   getWalletNetworkLabel,
   isWalletNetworkCompatible,
 } from "../lib/wallet/address";
-import { shortenAddress } from "../lib/utils/format";
+import { formatBytes, shortenAddress } from "../lib/utils/format";
 import type { SpaceVisibility } from "../types/space";
 
 export function CreateSpacePage() {
@@ -34,9 +35,12 @@ export function CreateSpacePage() {
   const [visibility, setVisibility] = useState<SpaceVisibility>("public");
   const [priceApt, setPriceApt] = useState("0.01");
   const [allowlistText, setAllowlistText] = useState("");
+  const [publicCoverFile, setPublicCoverFile] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
   const address = getAccountAddress(wallet.account);
   const walletNetworkLabel = getWalletNetworkLabel(wallet.network);
   const walletNetworkCompatible = isWalletNetworkCompatible({
@@ -111,6 +115,7 @@ export function CreateSpacePage() {
           .split(/[\s,]+/)
           .map((value) => value.trim())
           .filter(Boolean),
+        publicCoverFile,
         files,
       });
       notify({
@@ -119,6 +124,7 @@ export function CreateSpacePage() {
         message: `${space.title} is indexed on Shelbynet and ready in Discover.`,
       });
       clearUploadDraft();
+      setPublicCoverFile(null);
       navigate(`/spaces/${space.id}`);
     } catch (caught) {
       const message = getErrorMessage(caught);
@@ -220,6 +226,66 @@ export function CreateSpacePage() {
                 rows={3}
               />
             </label>
+          )}
+
+          {visibility !== "public" && (
+            <div className="cover-picker">
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  setCoverError(null);
+
+                  if (!file) {
+                    setPublicCoverFile(null);
+                    return;
+                  }
+
+                  if (!file.type.startsWith("image/")) {
+                    setCoverError("Choose an image file for the public cover.");
+                    return;
+                  }
+
+                  if (file.size > 12 * 1024 * 1024) {
+                    setCoverError("Public cover must be 12 MB or smaller.");
+                    return;
+                  }
+
+                  setPublicCoverFile(file);
+                }}
+              />
+              <div>
+                <span className="tiny-label">Public cover</span>
+                <strong>Show a cover without exposing the gated files.</strong>
+                <p>
+                  Optional for paid or wallet-gated Spaces. If empty, Oria blurs the first private
+                  image as the thumbnail.
+                </p>
+              </div>
+              {publicCoverFile ? (
+                <span className="cover-file-pill">
+                  {publicCoverFile.name} - {formatBytes(publicCoverFile.size)}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPublicCoverFile(null);
+                      if (coverInputRef.current) coverInputRef.current.value = "";
+                    }}
+                    aria-label="Remove public cover"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              ) : (
+                <button className="button secondary" type="button" onClick={() => coverInputRef.current?.click()}>
+                  <ImagePlus size={18} aria-hidden="true" />
+                  Add cover
+                </button>
+              )}
+              {coverError && <p className="dropzone-validation">{coverError}</p>}
+            </div>
           )}
 
           <UploadDropzone files={files} onFilesChange={setFiles} />

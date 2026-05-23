@@ -29,6 +29,10 @@ export type Space = {
   title: string;
   description: string;
   thumbnailBlobName?: string;
+  thumbnailFileName?: string;
+  thumbnailMimeType?: string;
+  thumbnailSize?: number;
+  thumbnailIsPublic?: boolean;
   manifestBlobName?: string;
   manifestHash?: string;
   manifestVersion: number;

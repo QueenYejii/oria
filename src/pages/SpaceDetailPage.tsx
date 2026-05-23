@@ -181,12 +181,38 @@ export function SpaceDetailPage() {
       saveLocalPayment(receipt);
       setPaymentReceipt(receipt);
       setPaymentTick((tick) => tick + 1);
-      mirrorPaymentReceipt(receipt).catch(() => undefined);
       notify({
         tone: "success",
         title: "Space unlocked",
-        message: `Receipt ${receipt.receiptId} saved. On-chain access is refreshing.`,
+        message: `Receipt ${receipt.receiptId} saved. Verifying it for the seller dashboard.`,
       });
+      mirrorPaymentReceipt(receipt)
+        .then((payload) => {
+          if (!payload?.receipt) return;
+          const verifiedReceipt = {
+            ...receipt,
+            ...payload.receipt,
+            chainStatus: "verified" as const,
+            source: "receipt_mirror" as const,
+          };
+          saveLocalPayment(verifiedReceipt);
+          setPaymentReceipt(verifiedReceipt);
+          notify({
+            tone: "success",
+            title: "Receipt verified",
+            message: "This purchase is now visible in the seller sales dashboard.",
+          });
+        })
+        .catch((error) => {
+          const failedReceipt = { ...receipt, chainStatus: "failed" as const };
+          saveLocalPayment(failedReceipt);
+          setPaymentReceipt(failedReceipt);
+          notify({
+            tone: "info",
+            title: "Receipt mirror pending",
+            message: getErrorMessage(error),
+          });
+        });
     } catch (caught) {
       const message = getErrorMessage(caught);
       setPaymentError(message);
@@ -481,10 +507,20 @@ export function SpaceDetailPage() {
               <section className="receipt-panel">
                 <div>
                   <span className="tiny-label">Receipt</span>
-                  <strong>{paymentReceipt ? "Payment submitted" : "Payment verified"}</strong>
+                  <strong>
+                    {paymentReceipt?.chainStatus === "verified"
+                      ? "Payment verified"
+                      : paymentReceipt?.chainStatus === "failed"
+                        ? "Payment saved, mirror pending"
+                        : paymentReceipt
+                          ? "Payment submitted"
+                          : "Payment verified"}
+                  </strong>
                   <p>
                     {paymentReceipt
-                      ? `${paymentReceipt.receiptId} is saved locally while Oria refreshes registry access.`
+                      ? paymentReceipt.chainStatus === "verified"
+                        ? `${paymentReceipt.receiptId} is verified and visible to the seller.`
+                        : `${paymentReceipt.receiptId} is saved locally while Oria verifies it for seller reporting.`
                       : `This wallet has an unlock record for ${space.title}.`}
                   </p>
                   {paymentReceipt && (

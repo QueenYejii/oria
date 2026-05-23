@@ -43,6 +43,8 @@ export default async function handler(request, response) {
     });
     sendJson(response, 200, { receipts, store: getReceiptStoreStatus() });
   } catch (error) {
-    sendJson(response, 500, { error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    const status = message.includes("required") ? 400 : 422;
+    sendJson(response, status, { error: message });
   }
 }
