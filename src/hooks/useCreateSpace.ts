@@ -23,6 +23,9 @@ type CreateSpaceInput = {
 };
 
 const thirtyDaysInMicros = 30 * 24 * 60 * 60 * 1_000_000;
+const maxFileSize = 2 * 1024 * 1024 * 1024;
+const maxTotalSize = 5 * 1024 * 1024 * 1024;
+const blockedExtensions = new Set(["exe", "bat", "cmd", "com", "msi", "ps1", "scr"]);
 
 export function useCreateSpace() {
   const { activeNetwork } = useActiveNetwork();
@@ -32,10 +35,17 @@ export function useCreateSpace() {
   const [items, setItems] = useState<UploadItem[]>([]);
   const [createdSpace, setCreatedSpace] = useState<Space | null>(null);
   const [lastInput, setLastInput] = useState<CreateSpaceInput | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const cancelRequestedRef = useRef(false);
 
   const updateAll = (patch: Partial<UploadItem>) => {
     setItems((current) => current.map((item) => ({ ...item, ...patch })));
+  };
+
+  const updateItem = (index: number, patch: Partial<UploadItem>) => {
+    setItems((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
   };
 
   const createSpace = async (input: CreateSpaceInput) => {
@@ -55,6 +65,20 @@ export function useCreateSpace() {
       throw new Error("Remove empty files before publishing.");
     }
 
+    const totalSize = input.files.reduce((sum, file) => sum + file.size, 0);
+    if (input.files.some((file) => file.size > maxFileSize)) {
+      throw new Error("One or more files are larger than the current 2 GB per-file limit.");
+    }
+
+    if (totalSize > maxTotalSize) {
+      throw new Error("This release is larger than the current 5 GB total queue limit.");
+    }
+
+    const blockedFile = input.files.find((file) => blockedExtensions.has(file.name.split(".").pop()?.toLowerCase() ?? ""));
+    if (blockedFile) {
+      throw new Error(`${blockedFile.name} is not accepted for community releases.`);
+    }
+
     if (!input.title.trim()) {
       throw new Error("Give this Space a title.");
     }
@@ -67,6 +91,7 @@ export function useCreateSpace() {
     const spaceId = createId("space");
 
     setCreatedSpace(null);
+    setIsPublishing(true);
     setItems(
       input.files.map((file) => ({
         id: createId("upload"),
@@ -83,44 +108,59 @@ export function useCreateSpace() {
         }
       };
 
-      updateAll({ status: "reading", progressLabel: "Preparing files" });
+      updateAll({ status: "reading", progressLabel: "Preparing files", progress: 8 });
 
       const blobs = await Promise.all(
-        input.files.map(async (file, index) => ({
-          blobName: createBlobName({ spaceId, fileName: file.name, index }),
-          blobData: await fileToUint8Array(file),
-        }))
+        input.files.map(async (file, index) => {
+          updateItem(index, {
+            status: "reading",
+            progressLabel: `Reading ${index + 1} of ${input.files.length}`,
+            progress: 12,
+          });
+          const blob = {
+            blobName: createBlobName({ spaceId, fileName: file.name, index }),
+            blobData: await fileToUint8Array(file),
+          };
+          updateItem(index, {
+            status: "ready",
+            progressLabel: "Prepared for Shelby",
+            progress: 24,
+          });
+          return blob;
+        })
       );
 
       assertNotCancelled();
-
-      setItems((current) =>
-        current.map((item) => ({
-          ...item,
-          status: "ready",
-          progressLabel: "Ready",
-        }))
-      );
-
-      updateAll({ status: "signing", progressLabel: "Waiting for wallet" });
 
       const expirationMicros = now * 1000 + thirtyDaysInMicros;
 
-      assertNotCancelled();
-      updateAll({ status: "uploading", progressLabel: "Uploading Shelby blobs" });
+      for (let index = 0; index < blobs.length; index += 1) {
+        assertNotCancelled();
+        updateItem(index, {
+          status: "signing",
+          progressLabel: `Wallet signature ${index + 1} of ${blobs.length}`,
+          progress: 34,
+        });
 
-      await uploadBlobs.mutateAsync({
-        signer: {
-          account: creator,
-          signAndSubmitTransaction: wallet.signAndSubmitTransaction,
-        },
-        blobs,
-        expirationMicros,
-        maxConcurrentUploads: 3,
-      });
+        await uploadBlobs.mutateAsync({
+          signer: {
+            account: creator,
+            signAndSubmitTransaction: wallet.signAndSubmitTransaction,
+          },
+          blobs: [blobs[index]],
+          expirationMicros,
+          maxConcurrentUploads: 1,
+        });
+
+        updateItem(index, {
+          status: "published",
+          progressLabel: "Blob stored on Shelby",
+          progress: 72,
+        });
+      }
 
       assertNotCancelled();
-      updateAll({ status: "published", progressLabel: "Published" });
+      updateAll({ status: "published", progressLabel: "Blobs published", progress: 76 });
 
       const files: SpaceFile[] = input.files.map((file, index) => ({
         id: createId("file"),
@@ -173,7 +213,7 @@ export function useCreateSpace() {
         manifestHash,
       };
 
-      updateAll({ status: "indexing", progressLabel: "Writing manifest" });
+      updateAll({ status: "indexing", progressLabel: "Writing manifest", progress: 84 });
 
       assertNotCancelled();
       await uploadBlobs.mutateAsync({
@@ -192,7 +232,7 @@ export function useCreateSpace() {
       });
 
       let registryTxHash: string | undefined;
-      updateAll({ status: "indexing", progressLabel: "Registering Space" });
+      updateAll({ status: "indexing", progressLabel: "Registering Space", progress: 94 });
 
       assertNotCancelled();
       registryTxHash =
@@ -201,7 +241,7 @@ export function useCreateSpace() {
           signAndSubmitTransaction: wallet.signAndSubmitTransaction,
         })) ?? undefined;
 
-      updateAll({ status: "published", progressLabel: "Published" });
+      updateAll({ status: "published", progressLabel: "Published", progress: 100 });
 
       const space: Space = {
         ...indexedSpaceDraft,
@@ -229,6 +269,8 @@ export function useCreateSpace() {
         error: getErrorMessage(error),
       });
       throw error;
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -238,7 +280,7 @@ export function useCreateSpace() {
       cancelRequestedRef.current = true;
       updateAll({
         status: "cancelled",
-        progressLabel: "Cancelling after current Shelby request",
+        progressLabel: "Cancelling after the current wallet/Shelby request",
       });
     },
     retryLastUpload: () => {
@@ -251,7 +293,7 @@ export function useCreateSpace() {
     canRetry: Boolean(lastInput && items.some((item) => item.status === "failed")),
     createdSpace,
     uploadItems: items,
-    isUploading: uploadBlobs.isPending,
+    isUploading: isPublishing || uploadBlobs.isPending,
     error: uploadBlobs.error,
   };
 }

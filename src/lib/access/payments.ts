@@ -6,6 +6,13 @@ export type LocalPaymentRecord = {
   payer: string;
   txHash: string;
   paidAt: number;
+  amountOctas?: number;
+  currency?: "APT";
+  spaceTitle?: string;
+  creator?: string;
+  receiptId?: string;
+  source?: "registry" | "local";
+  chainStatus?: "pending" | "verified" | "failed";
 };
 
 const STORAGE_KEY = "oria:payments:v1";
@@ -29,6 +36,10 @@ export function listLocalPayments() {
   return readRecords().sort((a, b) => b.paidAt - a.paidAt);
 }
 
+export function createPaymentReceiptId(record: Pick<LocalPaymentRecord, "network" | "spaceId" | "txHash">) {
+  return `oria-${record.network}-${record.spaceId.slice(-8)}-${record.txHash.slice(-8)}`;
+}
+
 export function hasLocalPayment(params: {
   spaceId: string;
   network: OriaNetwork;
@@ -47,14 +58,20 @@ export function hasLocalPayment(params: {
 
 export function saveLocalPayment(record: LocalPaymentRecord) {
   const records = readRecords();
+  const normalizedRecord = {
+    ...record,
+    receiptId: record.receiptId ?? createPaymentReceiptId(record),
+    source: record.source ?? "registry",
+    chainStatus: record.chainStatus ?? "pending",
+  };
   const nextRecords = [
-    record,
+    normalizedRecord,
     ...records.filter(
       (item) =>
         !(
-          item.spaceId === record.spaceId &&
-          item.network === record.network &&
-          item.payer.toLowerCase() === record.payer.toLowerCase()
+          item.spaceId === normalizedRecord.spaceId &&
+          item.network === normalizedRecord.network &&
+          item.payer.toLowerCase() === normalizedRecord.payer.toLowerCase()
         ),
     ),
   ];

@@ -18,6 +18,16 @@ export function formatDate(value: number) {
   }).format(new Date(value));
 }
 
+export function formatDateTime(value: number) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export function shortenAddress(address: string) {
   if (address.length <= 14) return address;
   return `${address.slice(0, 6)}...${address.slice(-6)}`;

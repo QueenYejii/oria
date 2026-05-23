@@ -105,7 +105,7 @@ export function CreatorPage() {
             <strong>{latestSpace?.title ?? "No release yet"}</strong>
             <p>
               {latestSpace
-                ? `${latestSpace.files.length} files · updated ${formatDate(latestSpace.updatedAt)}`
+                ? `${latestSpace.files.length} files - updated ${formatDate(latestSpace.updatedAt)}`
                 : "Published Spaces from this creator will appear here as soon as discovery indexes them."}
             </p>
           </article>
@@ -151,11 +151,20 @@ export function CreatorPage() {
         </section>
 
         {spaces.length > 0 ? (
-          <section className="space-list marketplace-grid">
-            {spaces.map((space) => (
-              <SpaceCard key={space.id} space={space} />
-            ))}
-          </section>
+          <>
+            <section className="section-label creator-space-heading">
+              <div>
+                <p className="eyebrow">Creator Spaces</p>
+                <h2>Published drops</h2>
+              </div>
+              <span>{spaces.length} indexed</span>
+            </section>
+            <section className="space-list marketplace-grid">
+              {spaces.map((space) => (
+                <SpaceCard key={space.id} space={space} />
+              ))}
+            </section>
+          </>
         ) : (
           <section className="empty-state">
             <h2>No Spaces found for this creator.</h2>

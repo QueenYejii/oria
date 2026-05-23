@@ -1,8 +1,31 @@
 const defaultNodeUrl = "https://api.shelbynet.shelby.xyz/v1";
+const cache = new Map();
+const registryCacheKey = "registry";
+const registryTtlMs = 15_000;
+const recordTtlMs = 30_000;
+
+function getCached(key) {
+  const entry = cache.get(key);
+  if (!entry || entry.expiresAt < Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.value;
+}
+
+function setCached(key, value, ttlMs) {
+  cache.set(key, {
+    value,
+    expiresAt: Date.now() + ttlMs,
+  });
+  return value;
+}
 
 function getConfig() {
   const registryAddress = process.env.ORIA_REGISTRY_ADDRESS || process.env.VITE_ORIA_REGISTRY_ADDRESS;
   const nodeUrl = process.env.APTOS_NODE_URL || process.env.VITE_APTOS_NODE_URL || defaultNodeUrl;
+  const indexerUrl = process.env.APTOS_INDEXER_URL || process.env.VITE_APTOS_INDEXER_URL;
 
   if (!registryAddress) {
     throw new Error("ORIA_REGISTRY_ADDRESS is required.");
@@ -11,8 +34,10 @@ function getConfig() {
   return {
     registryAddress,
     nodeUrl,
+    indexerUrl,
     registryType: `${registryAddress}::space_registry::Registry`,
     spaceRecordType: `${registryAddress}::space_registry::SpaceRecord`,
+    purchaseEventType: `${registryAddress}::space_registry::SpacePurchased`,
   };
 }
 
@@ -212,10 +237,13 @@ async function aptos(path, init) {
 
 async function getRegistry() {
   const { registryAddress, registryType } = getConfig();
+  const cached = getCached(registryCacheKey);
+  if (cached) return cached;
+
   const resource = await aptos(
     `/accounts/${registryAddress}/resource/${encodeURIComponent(registryType)}`,
   );
-  return resource.data;
+  return setCached(registryCacheKey, resource.data, registryTtlMs);
 }
 
 async function getTableItem(handle, keyType, valueType, key) {
@@ -249,22 +277,40 @@ function normalizeRecord(record) {
   };
 }
 
-export async function listRecords(searchParams) {
+function parsePagination(searchParams) {
+  const limit = Math.min(Math.max(Number(searchParams.get("limit") || 50), 1), 100);
+  const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
+
+  return { limit, offset };
+}
+
+async function getRecordFromTable(handle, spaceRecordType, spaceId) {
+  const cacheKey = `space:${spaceId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const record = await getTableItem(handle, "0x1::string::String", spaceRecordType, spaceId);
+  return setCached(cacheKey, normalizeRecord(record), recordTtlMs);
+}
+
+export async function listRecordsPage(searchParams) {
   const { spaceRecordType } = getConfig();
   const registry = await getRegistry();
   const handle = tableHandle(registry.spaces);
   const ids = Array.isArray(registry.space_ids) ? registry.space_ids : [];
-  const records = await Promise.all(
-    ids.map((spaceId) => getTableItem(handle, "0x1::string::String", spaceRecordType, spaceId)),
-  );
-  const normalized = records.map(normalizeRecord);
   const q = searchParams.get("q")?.toLowerCase();
   const creator = searchParams.get("creator")?.toLowerCase();
   const network = searchParams.get("network");
   const visibility = searchParams.get("visibility");
-  const limit = Math.min(Number(searchParams.get("limit") || 50), 100);
+  const { limit, offset } = parsePagination(searchParams);
+  const needsFullScan = Boolean(q || creator || network || visibility);
+  const sortedIds = [...ids].reverse();
+  const idsToFetch = needsFullScan ? sortedIds : sortedIds.slice(offset, offset + limit);
+  const normalized = await Promise.all(
+    idsToFetch.map((spaceId) => getRecordFromTable(handle, spaceRecordType, spaceId)),
+  );
 
-  return normalized
+  const filtered = normalized
     .filter((record) => !creator || record.creator.toLowerCase() === creator)
     .filter((record) => !network || record.network === network)
     .filter((record) => !visibility || String(record.visibility) === visibility)
@@ -275,16 +321,35 @@ export async function listRecords(searchParams) {
         record.creator.toLowerCase().includes(q) ||
         record.manifestBlobName.toLowerCase().includes(q),
     )
-    .sort((a, b) => b.createdAtMicros - a.createdAtMicros)
-    .slice(0, limit);
+    .sort((a, b) => b.createdAtMicros - a.createdAtMicros);
+  const pageRecords = needsFullScan ? filtered.slice(offset, offset + limit) : filtered;
+
+  return {
+    records: pageRecords,
+    pagination: {
+      limit,
+      offset,
+      count: pageRecords.length,
+      total: needsFullScan ? filtered.length : ids.length,
+      hasMore: offset + pageRecords.length < (needsFullScan ? filtered.length : ids.length),
+    },
+    cache: {
+      ttlMs: recordTtlMs,
+      mode: needsFullScan ? "filtered-scan" : "paged",
+    },
+  };
+}
+
+export async function listRecords(searchParams) {
+  const page = await listRecordsPage(searchParams);
+  return page.records;
 }
 
 export async function getRecord(spaceId) {
   const { spaceRecordType } = getConfig();
   const registry = await getRegistry();
   const handle = tableHandle(registry.spaces);
-  const record = await getTableItem(handle, "0x1::string::String", spaceRecordType, spaceId);
-  return normalizeRecord(record);
+  return getRecordFromTable(handle, spaceRecordType, spaceId);
 }
 
 export async function getAccess(spaceId, wallet) {
@@ -324,10 +389,94 @@ export async function getAccess(spaceId, wallet) {
 }
 
 export function getHealthPayload() {
-  const { registryAddress, nodeUrl } = getConfig();
+  const { registryAddress, nodeUrl, indexerUrl } = getConfig();
   return {
     ok: true,
     registryAddress,
     nodeUrl,
+    indexerUrl: indexerUrl || null,
+  };
+}
+
+function normalizePaymentEvent(event) {
+  const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data || {};
+  const paidAtMicros = Number(data.purchased_at_micros || data.paid_at_micros || 0);
+  const paidAt = paidAtMicros > 0 ? Math.floor(paidAtMicros / 1000) : Date.now();
+  const network = data.network || "shelbynet";
+  const txHash = event.transaction_hash || event.transactionHash || String(event.transaction_version || "");
+
+  return {
+    spaceId: data.space_id,
+    network,
+    payer: data.buyer,
+    txHash,
+    paidAt,
+    amountOctas: Number(data.price_octas || 0),
+    currency: "APT",
+    creator: data.creator,
+    receiptId: `oria-${network}-${String(data.space_id || "").slice(-8)}-${String(txHash).slice(-8)}`,
+    source: "registry",
+    chainStatus: "verified",
+    eventIndex: Number(event.event_index ?? 0),
+    transactionVersion: String(event.transaction_version ?? ""),
+  };
+}
+
+export async function listPaymentEvents(searchParams) {
+  const { indexerUrl, purchaseEventType } = getConfig();
+  const limit = Math.min(Math.max(Number(searchParams.get("limit") || 50), 1), 100);
+  const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
+
+  if (!indexerUrl) {
+    return {
+      payments: [],
+      source: "indexer_unavailable",
+      error: "APTOS_INDEXER_URL is not configured for this deployment.",
+    };
+  }
+
+  const filters = [{ type: { _eq: purchaseEventType } }];
+  const buyer = searchParams.get("buyer")?.toLowerCase();
+  const creator = searchParams.get("creator")?.toLowerCase();
+  const spaceId = searchParams.get("spaceId");
+  if (buyer) filters.push({ data: { _contains: { buyer } } });
+  if (creator) filters.push({ data: { _contains: { creator } } });
+  if (spaceId) filters.push({ data: { _contains: { space_id: spaceId } } });
+
+  const response = await fetch(indexerUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      query: `
+        query OriaPayments($where: events_bool_exp!, $limit: Int!, $offset: Int!) {
+          events(where: $where, order_by: {transaction_version: desc}, limit: $limit, offset: $offset) {
+            type
+            data
+            event_index
+            transaction_version
+          }
+        }
+      `,
+      variables: {
+        where: { _and: filters },
+        limit,
+        offset,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Indexer ${response.status}: ${text}`);
+  }
+
+  const payload = await response.json();
+  if (payload.errors) {
+    throw new Error(payload.errors.map((error) => error.message).join(". "));
+  }
+
+  return {
+    payments: (payload.data?.events || []).map(normalizePaymentEvent),
+    source: "indexer",
   };
 }

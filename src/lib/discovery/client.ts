@@ -39,11 +39,15 @@ export async function listRegistrySpaces(params: {
   network?: OriaNetwork;
   creator?: string;
   q?: string;
+  limit?: number;
+  offset?: number;
 }) {
   const query = new URLSearchParams();
   if (params.network) query.set("network", params.network);
   if (params.creator) query.set("creator", params.creator);
   if (params.q) query.set("q", params.q);
+  if (params.limit) query.set("limit", String(params.limit));
+  if (params.offset) query.set("offset", String(params.offset));
 
   const payload = await discoveryFetch<{ spaces: RegistrySpaceRecord[] }>(`/spaces?${query}`);
   return payload?.spaces ?? [];

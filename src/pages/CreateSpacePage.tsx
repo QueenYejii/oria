@@ -1,5 +1,5 @@
 import { AppHeader } from "../components/layout/AppHeader";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { UploadDropzone } from "../components/upload/UploadDropzone";
@@ -8,6 +8,13 @@ import { useCreateSpace } from "../hooks/useCreateSpace";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useToasts } from "../providers/ToastProvider";
 import { getErrorMessage } from "../lib/utils/errors";
+import {
+  clearUploadDraft,
+  loadUploadDraft,
+  loadUploadDraftFiles,
+  saveUploadDraft,
+  saveUploadDraftFiles,
+} from "../lib/upload/draft-store";
 import {
   getAccountAddress,
   getWalletNetworkLabel,
@@ -29,6 +36,7 @@ export function CreateSpacePage() {
   const [allowlistText, setAllowlistText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
   const address = getAccountAddress(wallet.account);
   const walletNetworkLabel = getWalletNetworkLabel(wallet.network);
   const walletNetworkCompatible = isWalletNetworkCompatible({
@@ -38,6 +46,56 @@ export function CreateSpacePage() {
   const networkMismatch = Boolean(
     wallet.connected && wallet.network?.name && !walletNetworkCompatible
   );
+
+  useEffect(() => {
+    const draft = loadUploadDraft();
+    if (!draft) return;
+
+    setTitle(draft.title);
+    setDescription(draft.description);
+    setVisibility(draft.visibility);
+    setPriceApt(draft.priceApt);
+    setAllowlistText(draft.allowlistText);
+
+    loadUploadDraftFiles().then((draftFiles) => {
+      if (draftFiles.length > 0) {
+        setFiles(draftFiles);
+        setRestoredDraftNotice(
+          `Recovered your last draft from ${new Date(draft.updatedAt).toLocaleString()} with ${draftFiles.length} file(s).`,
+        );
+        return;
+      }
+
+      if (draft.files.length > 0) {
+        setRestoredDraftNotice(
+          `Recovered your last draft from ${new Date(draft.updatedAt).toLocaleString()}. Re-select ${draft.files.length} file(s) before publishing.`,
+        );
+      } else if (draft.title || draft.description) {
+        setRestoredDraftNotice(`Recovered your last draft from ${new Date(draft.updatedAt).toLocaleString()}.`);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!title && !description && files.length === 0 && visibility === "public" && !allowlistText) {
+      return;
+    }
+
+    saveUploadDraft({
+      title,
+      description,
+      visibility,
+      priceApt,
+      allowlistText,
+      files: files.map((file) => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified,
+      })),
+    });
+    void saveUploadDraftFiles(files);
+  }, [allowlistText, description, files, priceApt, title, visibility]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -60,6 +118,7 @@ export function CreateSpacePage() {
         title: "Space is live",
         message: `${space.title} is indexed on Shelbynet and ready in Discover.`,
       });
+      clearUploadDraft();
       navigate(`/spaces/${space.id}`);
     } catch (caught) {
       const message = getErrorMessage(caught);
@@ -94,6 +153,11 @@ export function CreateSpacePage() {
               <p className="form-note">
                 Petra reports Shelbynet as a custom network. Oria will publish this Space to
                 Shelbynet.
+              </p>
+            )}
+            {restoredDraftNotice && (
+              <p className="form-note">
+                {restoredDraftNotice}
               </p>
             )}
           </div>
@@ -176,7 +240,12 @@ export function CreateSpacePage() {
                 className="button secondary publish-button"
                 type="button"
                 disabled={isUploading}
-                onClick={() => retryLastUpload().then((space) => navigate(`/spaces/${space.id}`))}
+                onClick={() =>
+                  retryLastUpload().then((space) => {
+                    clearUploadDraft();
+                    navigate(`/spaces/${space.id}`);
+                  })
+                }
               >
                 Retry failed upload
               </button>

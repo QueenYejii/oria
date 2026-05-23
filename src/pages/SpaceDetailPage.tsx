@@ -5,7 +5,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { SpaceFileList } from "../components/spaces/SpaceFileList";
 import { SpacePreview } from "../components/spaces/SpacePreview";
-import { hasLocalPayment, saveLocalPayment, subscribeToPayments } from "../lib/access/payments";
+import { createPaymentReceiptId, hasLocalPayment, saveLocalPayment, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
 import { resolveSpaceAccess } from "../lib/access/space-access";
 import { getRegistryAccess, type RegistryAccessRecord } from "../lib/discovery/client";
 import { hasRegistryConfig, purchaseSpaceOnChain, updateSpaceManifestOnChain } from "../lib/registry/client";
@@ -14,6 +14,7 @@ import { decodeSpaceManifest, createShareUrl, encodeSpaceManifest } from "../lib
 import { deleteSpace, saveSpace } from "../lib/spaces/local-store";
 import { getAccountAddress } from "../lib/wallet/address";
 import { getErrorMessage } from "../lib/utils/errors";
+import { getTransactionExplorerUrl } from "../lib/utils/explorer";
 import { useDownloadBlob } from "../hooks/useDownloadBlob";
 import { useSpace } from "../hooks/useSpaces";
 import type { OriaNetwork } from "../types/network";
@@ -31,6 +32,7 @@ export function SpaceDetailPage() {
   const { activeFileId, error, downloadFile } = useDownloadBlob();
   const [importError, setImportError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentReceipt, setPaymentReceipt] = useState<LocalPaymentRecord | null>(null);
   const [isPaying, setIsPaying] = useState(false);
   const [paymentTick, setPaymentTick] = useState(0);
   const [registryAccess, setRegistryAccess] = useState<RegistryAccessRecord | null>(null);
@@ -162,15 +164,28 @@ export function SpaceDetailPage() {
         signAndSubmitTransaction: wallet.signAndSubmitTransaction,
       });
 
-      saveLocalPayment({
+      const receipt: LocalPaymentRecord = {
         spaceId: space.id,
         network: space.network,
         payer: viewer,
         txHash,
+        amountOctas: space.payment.priceOctas,
+        currency: space.payment.currency,
+        spaceTitle: space.title,
+        creator: space.creator,
         paidAt: Date.now(),
-      });
+        source: "registry",
+        chainStatus: "pending",
+      };
+      receipt.receiptId = createPaymentReceiptId(receipt);
+      saveLocalPayment(receipt);
+      setPaymentReceipt(receipt);
       setPaymentTick((tick) => tick + 1);
-      notify({ tone: "success", title: "Space unlocked", message: "Payment recorded for this wallet." });
+      notify({
+        tone: "success",
+        title: "Space unlocked",
+        message: `Receipt ${receipt.receiptId} saved. On-chain access is refreshing.`,
+      });
     } catch (caught) {
       const message = getErrorMessage(caught);
       setPaymentError(message);
@@ -449,7 +464,53 @@ export function SpaceDetailPage() {
                 </button>
               </div>
             </section>
-            {paymentError && <p className="form-error">{paymentError}</p>}
+            {paymentError && (
+              <section className="payment-state-card failed">
+                <div>
+                  <span className="tiny-label">Payment failed</span>
+                  <strong>Wallet confirmation did not complete.</strong>
+                  <p>{paymentError}</p>
+                </div>
+                <button className="button secondary" type="button" disabled={!wallet.connected || isPaying} onClick={unlockPaidSpace}>
+                  Retry unlock
+                </button>
+              </section>
+            )}
+            {(paymentReceipt || (hasPaid && space.visibility === "paid")) && (
+              <section className="receipt-panel">
+                <div>
+                  <span className="tiny-label">Receipt</span>
+                  <strong>{paymentReceipt ? "Payment submitted" : "Payment verified"}</strong>
+                  <p>
+                    {paymentReceipt
+                      ? `${paymentReceipt.receiptId} is saved locally while Oria refreshes registry access.`
+                      : `This wallet has an unlock record for ${space.title}.`}
+                  </p>
+                </div>
+                {paymentReceipt?.txHash ? (
+                  <a
+                    className="button secondary"
+                    href={getTransactionExplorerUrl(paymentReceipt.txHash, paymentReceipt.network)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Payment tx
+                  </a>
+                ) : space.registryTxHash ? (
+                  <a
+                    className="button secondary"
+                    href={getTransactionExplorerUrl(space.registryTxHash, space.network)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Registry tx
+                  </a>
+                ) : null}
+                <Link className="button secondary" to="/payments">
+                  View history
+                </Link>
+              </section>
+            )}
 
             <SpacePreview space={space} canPreview={Boolean(access?.canDownload)} />
 
