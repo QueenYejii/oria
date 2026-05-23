@@ -472,7 +472,16 @@ export async function listPaymentEvents(searchParams) {
 
   const payload = await response.json();
   if (payload.errors) {
-    throw new Error(payload.errors.map((error) => error.message).join(". "));
+    const message = payload.errors.map((error) => error.message).join(". ");
+    if (message.includes("field 'events' not found")) {
+      return {
+        payments: [],
+        source: "indexer_unavailable",
+        error: "Shelbynet GraphQL is reachable, but registry purchase events are not exposed by this indexer yet.",
+      };
+    }
+
+    throw new Error(message);
   }
 
   return {

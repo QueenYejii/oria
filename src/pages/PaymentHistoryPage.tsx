@@ -116,7 +116,7 @@ export function PaymentHistoryPage() {
           <section className="payment-state-card">
             <div>
               <span className="tiny-label">Indexer status</span>
-              <strong>Showing saved receipts first.</strong>
+              <strong>Showing wallet receipts first.</strong>
               <p>{chainError}</p>
             </div>
           </section>
