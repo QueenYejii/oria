@@ -1,26 +1,61 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { lazy, Suspense, useRef } from "react";
+import { lazy, Suspense, useRef, type ComponentType } from "react";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { AppProviders } from "../providers/AppProviders";
 import { LandingPage } from "../pages/LandingPage";
 import { useGsapSwap } from "../hooks/useGsapSwap";
 
-const CreateSpacePage = lazy(() =>
+const chunkReloadKey = "oria:chunk-reload-at";
+
+function isDynamicImportError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return (
+    message.includes("Failed to fetch dynamically imported module") ||
+    message.includes("Importing a module script failed") ||
+    message.includes("error loading dynamically imported module") ||
+    message.includes("ChunkLoadError")
+  );
+}
+
+function lazyWithChunkReload<T extends ComponentType<unknown>>(
+  loader: () => Promise<{ default: T }>,
+) {
+  return lazy(async () => {
+    try {
+      return await loader();
+    } catch (error) {
+      if (isDynamicImportError(error) && typeof window !== "undefined") {
+        const lastReloadAt = Number(window.sessionStorage.getItem(chunkReloadKey) || 0);
+
+        if (Date.now() - lastReloadAt > 10_000) {
+          window.sessionStorage.setItem(chunkReloadKey, String(Date.now()));
+          window.location.reload();
+          return new Promise<{ default: T }>(() => undefined);
+        }
+      }
+
+      throw error;
+    }
+  });
+}
+
+const CreateSpacePage = lazyWithChunkReload(() =>
   import("../pages/CreateSpacePage").then((module) => ({ default: module.CreateSpacePage }))
 );
-const SpacesPage = lazy(() =>
+const SpacesPage = lazyWithChunkReload(() =>
   import("../pages/SpacesPage").then((module) => ({ default: module.SpacesPage }))
 );
-const SpaceDetailPage = lazy(() =>
+const SpaceDetailPage = lazyWithChunkReload(() =>
   import("../pages/SpaceDetailPage").then((module) => ({ default: module.SpaceDetailPage }))
 );
-const CreatorPage = lazy(() =>
+const CreatorPage = lazyWithChunkReload(() =>
   import("../pages/CreatorPage").then((module) => ({ default: module.CreatorPage }))
 );
-const VaultPage = lazy(() =>
+const VaultPage = lazyWithChunkReload(() =>
   import("../pages/VaultPage").then((module) => ({ default: module.VaultPage }))
 );
-const PaymentHistoryPage = lazy(() =>
+const PaymentHistoryPage = lazyWithChunkReload(() =>
   import("../pages/PaymentHistoryPage").then((module) => ({ default: module.PaymentHistoryPage }))
 );
 
