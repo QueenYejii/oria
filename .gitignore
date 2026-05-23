@@ -12,3 +12,5 @@ pnpm-debug.log*
 
 .vercel
 .aptos/
+test-results/
+playwright-report/

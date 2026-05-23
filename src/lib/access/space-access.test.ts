@@ -54,4 +54,44 @@ describe("resolveSpaceAccess", () => {
 
     expect(resolveSpaceAccess({ space, viewer: "0xdef" }).canDownload).toBe(true);
   });
+
+  it("requires external allowlist verification when registry state is trusted", () => {
+    const space = {
+      ...baseSpace,
+      visibility: "wallet_gated" as const,
+      access: { rule: "allowlist" as const, allowlist: ["0xdef"] },
+    };
+
+    expect(
+      resolveSpaceAccess({ space, viewer: "0xdef", trustExternalAccessState: true }).canDownload,
+    ).toBe(false);
+    expect(
+      resolveSpaceAccess({
+        space,
+        viewer: "0xdef",
+        trustExternalAccessState: true,
+        isAllowlisted: true,
+      }).canDownload,
+    ).toBe(true);
+  });
+
+  it("does not unlock paid Spaces without verified purchase state", () => {
+    const space = {
+      ...baseSpace,
+      visibility: "paid" as const,
+      access: { rule: "paid" as const },
+    };
+
+    expect(
+      resolveSpaceAccess({ space, viewer: "0xdef", trustExternalAccessState: true }).canDownload,
+    ).toBe(false);
+    expect(
+      resolveSpaceAccess({
+        space,
+        viewer: "0xdef",
+        trustExternalAccessState: true,
+        hasPaid: true,
+      }).canDownload,
+    ).toBe(true);
+  });
 });
