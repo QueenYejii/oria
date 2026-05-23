@@ -1612,6 +1612,55 @@ h1 {
   filter: saturate(1.05) contrast(1.02);
 }
 
+.space-card-art.private-thumbnail img {
+  transform: scale(1.1);
+  filter: blur(14px) saturate(0.82) contrast(0.94);
+}
+
+.space-card:hover .space-card-art.private-thumbnail img {
+  transform: scale(1.14);
+  filter: blur(12px) saturate(0.9) contrast(0.98);
+}
+
+.space-card-art.private-thumbnail::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(220px 120px at 48% 45%, color-mix(in oklch, var(--paper) 26%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in oklch, var(--ink) 8%, transparent), color-mix(in oklch, var(--ink) 38%, transparent));
+}
+
+.private-thumbnail-shield {
+  position: absolute;
+  inset: 0.85rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in oklch, var(--paper) 34%, transparent);
+  border-radius: 0.85rem;
+  color: var(--paper);
+  text-align: center;
+  backdrop-filter: blur(2px);
+}
+
+.private-thumbnail-shield span {
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--ink) 40%, transparent);
+  font-size: 0.68rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.private-thumbnail-shield strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  line-height: 1;
+}
+
 .space-card-art span {
   position: relative;
   z-index: 1;
@@ -2099,9 +2148,38 @@ h1 {
   gap: 0.2rem;
 }
 
+.payment-row > div:last-child span {
+  color: color-mix(in oklch, var(--ink) 54%, var(--paper));
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
 .payment-row strong {
   font-family: var(--font-display);
   font-size: 1.4rem;
+}
+
+.payment-section-heading {
+  margin: 2rem 0 1rem;
+}
+
+.payment-section-heading > span {
+  width: fit-content;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  color: color-mix(in oklch, var(--ink) 58%, var(--paper));
+  background: color-mix(in oklch, var(--ink) 7%, transparent);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.sale-row {
+  border-color: color-mix(in oklch, var(--teal) 24%, transparent);
+}
+
+.compact-empty {
+  margin-bottom: 0.5rem;
+  padding-block: 1.5rem;
 }
 
 .creator-hero {

@@ -388,6 +388,72 @@ export async function getAccess(spaceId, wallet) {
   };
 }
 
+async function getPurchasesForSpace(spaceId) {
+  const registry = await getRegistry();
+  const purchasesHandle = tableHandle(registry.purchases);
+
+  try {
+    return await getTableItem(
+      purchasesHandle,
+      "0x1::string::String",
+      "vector<address>",
+      spaceId,
+    );
+  } catch {
+    return [];
+  }
+}
+
+export async function listCreatorSales(address, searchParams = new URLSearchParams()) {
+  const query = new URLSearchParams(searchParams);
+  query.set("creator", String(address));
+  query.set("visibility", "2");
+  query.set("limit", query.get("limit") || "100");
+
+  const spaces = await listRecords(query);
+  const paidSpaces = spaces.filter((space) => Number(space.priceOctas) > 0 || Number(space.visibility) === 2);
+  const salesBySpace = await Promise.all(
+    paidSpaces.map(async (space) => {
+      const buyers = await getPurchasesForSpace(space.spaceId);
+
+      return {
+        spaceId: space.spaceId,
+        creator: space.creator,
+        network: space.network,
+        manifestBlobName: space.manifestBlobName,
+        priceOctas: space.priceOctas,
+        buyerCount: buyers.length,
+        buyers,
+        estimatedRevenueOctas: buyers.length * Number(space.priceOctas || 0),
+        updatedAtMicros: space.updatedAtMicros,
+      };
+    }),
+  );
+  const sales = salesBySpace.flatMap((space) =>
+    space.buyers.map((buyer) => ({
+      spaceId: space.spaceId,
+      creator: space.creator,
+      network: space.network,
+      manifestBlobName: space.manifestBlobName,
+      buyer,
+      amountOctas: space.priceOctas,
+      updatedAtMicros: space.updatedAtMicros,
+    })),
+  );
+
+  return {
+    creator: String(address),
+    spaces: salesBySpace,
+    sales,
+    summary: {
+      paidSpaces: paidSpaces.length,
+      sales: sales.length,
+      estimatedRevenueOctas: sales.reduce((sum, sale) => sum + Number(sale.amountOctas || 0), 0),
+    },
+    source: "registry_purchases_table",
+  };
+}
+
 export function getHealthPayload() {
   const { registryAddress, nodeUrl, indexerUrl } = getConfig();
   return {

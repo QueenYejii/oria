@@ -19,6 +19,8 @@ export function SpaceThumbnail({ space }: { space: Space }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
   const fallbackKind = getPreviewKind(space.files[0]?.mimeType ?? "");
+  const isPrivatePreview = space.visibility !== "public";
+  const privateLabel = space.visibility === "paid" ? "Paid preview" : "Wallet gated";
 
   useEffect(() => {
     if (!file || !file.mimeType.startsWith("image/") || file.size > thumbnailSizeLimit) {
@@ -62,7 +64,10 @@ export function SpaceThumbnail({ space }: { space: Space }) {
   }, [file, space.creator, space.network]);
 
   return (
-    <div className={`space-card-art ${objectUrl ? "has-thumbnail" : ""}`} aria-hidden="true">
+    <div
+      className={`space-card-art ${objectUrl ? "has-thumbnail" : ""} ${isPrivatePreview ? "private-thumbnail" : ""}`}
+      aria-hidden="true"
+    >
       {objectUrl ? (
         <img src={objectUrl} alt="" loading="lazy" decoding="async" />
       ) : (
@@ -71,6 +76,12 @@ export function SpaceThumbnail({ space }: { space: Space }) {
           {status === "failed" && <ImageOff size={18} />}
           <i />
         </>
+      )}
+      {isPrivatePreview && (
+        <div className="private-thumbnail-shield">
+          <span>{privateLabel}</span>
+          <strong>Private</strong>
+        </div>
       )}
     </div>
   );
