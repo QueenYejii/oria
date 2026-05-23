@@ -45,7 +45,7 @@ export async function getCreatorSales(address: string) {
   const baseUrl = getDiscoveryApiUrl();
   if (!baseUrl) return null;
 
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/creators/${encodeURIComponent(address)}/sales`);
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/sales/${encodeURIComponent(address)}`);
   if (!response.ok) {
     throw new Error(`Creator sales returned ${response.status}.`);
   }
