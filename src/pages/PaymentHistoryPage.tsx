@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { AppHeader } from "../components/layout/AppHeader";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { listChainPayments } from "../lib/access/payment-events";
-import { listLocalPayments, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
+import { listLocalPayments, listMirroredReceipts, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
 import { getCreatorSales, type CreatorSaleRecord } from "../lib/access/sales";
 import { getSpace } from "../lib/spaces/local-store";
 import { getTransactionExplorerUrl } from "../lib/utils/explorer";
@@ -44,6 +44,7 @@ export function PaymentHistoryPage() {
   useSpaces(address ? { creator: address, network: activeNetwork } : { network: activeNetwork });
   const [localRecords, setLocalRecords] = useState(() => listLocalPayments());
   const [chainRecords, setChainRecords] = useState<LocalPaymentRecord[]>([]);
+  const [mirroredRecords, setMirroredRecords] = useState<LocalPaymentRecord[]>([]);
   const [sales, setSales] = useState<CreatorSaleRecord[]>([]);
   const [salesError, setSalesError] = useState<string | null>(null);
   const [chainSource, setChainSource] = useState("local");
@@ -60,16 +61,21 @@ export function PaymentHistoryPage() {
     }
 
     let cancelled = false;
-    listChainPayments({ buyer: address, limit: 100 })
-      .then((payload) => {
+    Promise.all([
+      listChainPayments({ buyer: address, limit: 100 }),
+      listMirroredReceipts({ payer: address, network: activeNetwork }),
+    ])
+      .then(([payload, mirrored]) => {
         if (cancelled) return;
         setChainRecords(payload.payments);
+        setMirroredRecords(mirrored);
         setChainSource(payload.source);
         setChainError(payload.error ?? null);
       })
       .catch((error) => {
         if (cancelled) return;
         setChainRecords([]);
+        setMirroredRecords([]);
         setChainSource("local");
         setChainError(error instanceof Error ? error.message : String(error));
       });
@@ -77,7 +83,7 @@ export function PaymentHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [activeNetwork, address]);
 
   useEffect(() => {
     if (!address) {
@@ -104,7 +110,10 @@ export function PaymentHistoryPage() {
     };
   }, [activeNetwork, address]);
 
-  const records = useMemo(() => mergePayments(localRecords, chainRecords), [chainRecords, localRecords]);
+  const records = useMemo(
+    () => mergePayments(localRecords, [...chainRecords, ...mirroredRecords]),
+    [chainRecords, localRecords, mirroredRecords],
+  );
 
   const totalApt = useMemo(
     () =>

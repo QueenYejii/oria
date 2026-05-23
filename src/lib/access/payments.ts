@@ -1,4 +1,5 @@
 import type { OriaNetwork } from "../../types/network";
+import { getDiscoveryApiUrl } from "../discovery/client";
 
 export type LocalPaymentRecord = {
   spaceId: string;
@@ -78,6 +79,50 @@ export function saveLocalPayment(record: LocalPaymentRecord) {
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRecords));
   window.dispatchEvent(new Event(STORAGE_EVENT));
+}
+
+export async function mirrorPaymentReceipt(record: LocalPaymentRecord) {
+  const baseUrl = getDiscoveryApiUrl();
+  if (!baseUrl) return null;
+
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/receipts`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(record),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Receipt mirror returned ${response.status}.`);
+  }
+
+  return (await response.json()) as {
+    receipt: LocalPaymentRecord;
+    store: { mode: string; persistent: boolean };
+  };
+}
+
+export async function listMirroredReceipts(params: {
+  payer?: string;
+  creator?: string;
+  spaceId?: string;
+  network?: OriaNetwork;
+}) {
+  const baseUrl = getDiscoveryApiUrl();
+  if (!baseUrl) return [];
+
+  const query = new URLSearchParams();
+  if (params.payer) query.set("payer", params.payer);
+  if (params.creator) query.set("creator", params.creator);
+  if (params.spaceId) query.set("spaceId", params.spaceId);
+  if (params.network) query.set("network", params.network);
+
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/receipts?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Receipt mirror returned ${response.status}.`);
+  }
+
+  const payload = (await response.json()) as { receipts: LocalPaymentRecord[] };
+  return payload.receipts ?? [];
 }
 
 export function subscribeToPayments(callback: () => void) {

@@ -5,7 +5,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { SpaceFileList } from "../components/spaces/SpaceFileList";
 import { SpacePreview } from "../components/spaces/SpacePreview";
-import { createPaymentReceiptId, hasLocalPayment, saveLocalPayment, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
+import { createPaymentReceiptId, hasLocalPayment, mirrorPaymentReceipt, saveLocalPayment, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
 import { resolveSpaceAccess } from "../lib/access/space-access";
 import { getRegistryAccess, type RegistryAccessRecord } from "../lib/discovery/client";
 import { hasRegistryConfig, purchaseSpaceOnChain, updateSpaceManifestOnChain } from "../lib/registry/client";
@@ -18,7 +18,7 @@ import { getTransactionExplorerUrl } from "../lib/utils/explorer";
 import { useDownloadBlob } from "../hooks/useDownloadBlob";
 import { useSpace } from "../hooks/useSpaces";
 import type { OriaNetwork } from "../types/network";
-import { formatBytes, formatDate, shortenAddress } from "../lib/utils/format";
+import { formatBytes, formatDate, formatDateTime, shortenAddress } from "../lib/utils/format";
 import { sha256Hex } from "../lib/utils/hash";
 import { useToasts } from "../providers/ToastProvider";
 import type { Space, SpaceVisibility } from "../types/space";
@@ -181,6 +181,7 @@ export function SpaceDetailPage() {
       saveLocalPayment(receipt);
       setPaymentReceipt(receipt);
       setPaymentTick((tick) => tick + 1);
+      mirrorPaymentReceipt(receipt).catch(() => undefined);
       notify({
         tone: "success",
         title: "Space unlocked",
@@ -486,6 +487,26 @@ export function SpaceDetailPage() {
                       ? `${paymentReceipt.receiptId} is saved locally while Oria refreshes registry access.`
                       : `This wallet has an unlock record for ${space.title}.`}
                   </p>
+                  {paymentReceipt && (
+                    <dl className="receipt-details">
+                      <div>
+                        <dt>Amount</dt>
+                        <dd>
+                          {paymentReceipt.amountOctas
+                            ? `${(paymentReceipt.amountOctas / 100_000_000).toLocaleString()} APT`
+                            : "Verified"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Paid at</dt>
+                        <dd>{formatDateTime(paymentReceipt.paidAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Seller</dt>
+                        <dd>{paymentReceipt.creator ? shortenAddress(paymentReceipt.creator) : "Unknown"}</dd>
+                      </div>
+                    </dl>
+                  )}
                 </div>
                 {paymentReceipt?.txHash ? (
                   <a

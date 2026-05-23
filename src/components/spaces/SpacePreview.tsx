@@ -116,9 +116,16 @@ export function SpacePreview({ space, canPreview }: { space: Space; canPreview: 
       <div className="preview-layout">
         <div ref={stageRef} className="preview-stage">
           {!canPreview ? (
-            <div className="preview-locked">
-              <FileWarning size={28} />
-              <strong>Unlock this Space to preview its media.</strong>
+            <div className="preview-locked private-preview-lock">
+              <div>
+                <FileWarning size={28} />
+                <span>{space.visibility === "paid" ? "Paid media" : "Private media"}</span>
+              </div>
+              <strong>Preview hidden until unlock.</strong>
+              <p>
+                The file list and cover stay visible, but creator media is withheld until your
+                wallet has access.
+              </p>
             </div>
           ) : error ? (
             <p className="form-error">{error}</p>

@@ -58,6 +58,9 @@ const VaultPage = lazyWithChunkReload(() =>
 const PaymentHistoryPage = lazyWithChunkReload(() =>
   import("../pages/PaymentHistoryPage").then((module) => ({ default: module.PaymentHistoryPage }))
 );
+const SalesPage = lazyWithChunkReload(() =>
+  import("../pages/SalesPage").then((module) => ({ default: module.SalesPage }))
+);
 
 function AppRoutes() {
   const location = useLocation();
@@ -74,6 +77,7 @@ function AppRoutes() {
         <Route path="/u/:address" element={<CreatorPage />} />
         <Route path="/vault" element={<VaultPage />} />
         <Route path="/payments" element={<PaymentHistoryPage />} />
+        <Route path="/sales" element={<SalesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

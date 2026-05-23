@@ -44,7 +44,7 @@ function getConfig() {
 export function sendJson(response, status, payload) {
   response.setHeader("content-type", "application/json; charset=utf-8");
   response.setHeader("access-control-allow-origin", process.env.CORS_ORIGIN || "*");
-  response.setHeader("access-control-allow-methods", "GET,OPTIONS");
+  response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
   response.setHeader("access-control-allow-headers", "content-type");
   response.status(status).json(payload);
 }

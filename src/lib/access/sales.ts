@@ -9,6 +9,10 @@ export type CreatorSaleRecord = {
   buyer: string;
   amountOctas: number;
   updatedAtMicros: number;
+  paidAt?: number;
+  txHash?: string;
+  spaceTitle?: string;
+  source?: "receipt_mirror" | "registry_purchases_table";
 };
 
 export type CreatorSalesPayload = {
@@ -31,6 +35,10 @@ export type CreatorSalesPayload = {
     estimatedRevenueOctas: number;
   };
   source: "registry_purchases_table";
+  receiptStore?: {
+    mode: string;
+    persistent: boolean;
+  };
 };
 
 export async function getCreatorSales(address: string) {
