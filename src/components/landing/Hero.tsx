@@ -45,6 +45,12 @@ export function Hero() {
           <span />
           <p>Shelby upload, Aptos signing, and release metadata are designed as one calm flow.</p>
         </div>
+
+        <div className="hero-signal-rail" aria-label="Oria capabilities">
+          <span>Registry indexed</span>
+          <span>Gated previews</span>
+          <span>Creator receipts</span>
+        </div>
       </div>
 
       <ProductPreview />

@@ -49,6 +49,8 @@ export function PaymentHistoryPage() {
   const [salesError, setSalesError] = useState<string | null>(null);
   const [chainSource, setChainSource] = useState("local");
   const [chainError, setChainError] = useState<string | null>(null);
+  const [isSyncingReceipts, setIsSyncingReceipts] = useState(false);
+  const [isSyncingSales, setIsSyncingSales] = useState(false);
 
   useEffect(() => subscribeToPayments(() => setLocalRecords(listLocalPayments())), []);
 
@@ -57,10 +59,12 @@ export function PaymentHistoryPage() {
       setChainRecords([]);
       setChainSource("local");
       setChainError(null);
+      setIsSyncingReceipts(false);
       return;
     }
 
     let cancelled = false;
+    setIsSyncingReceipts(true);
     Promise.all([
       listChainPayments({ buyer: address, limit: 100 }),
       listMirroredReceipts({ payer: address, network: activeNetwork }),
@@ -78,6 +82,9 @@ export function PaymentHistoryPage() {
         setMirroredRecords([]);
         setChainSource("local");
         setChainError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (!cancelled) setIsSyncingReceipts(false);
       });
 
     return () => {
@@ -89,10 +96,12 @@ export function PaymentHistoryPage() {
     if (!address) {
       setSales([]);
       setSalesError(null);
+      setIsSyncingSales(false);
       return;
     }
 
     let cancelled = false;
+    setIsSyncingSales(true);
     getCreatorSales(address)
       .then((payload) => {
         if (cancelled) return;
@@ -103,6 +112,9 @@ export function PaymentHistoryPage() {
         if (cancelled) return;
         setSales([]);
         setSalesError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (!cancelled) setIsSyncingSales(false);
       });
 
     return () => {
@@ -179,6 +191,16 @@ export function PaymentHistoryPage() {
             Open seller dashboard
           </Link>
         </section>
+
+        {(isSyncingReceipts || isSyncingSales) && (
+          <section className="sync-state-card" aria-label="Receipt sync status">
+            <span />
+            <div>
+              <strong>Refreshing payment records</strong>
+              <p>Checking local receipts, mirrored purchases, and creator sales for {activeNetwork}.</p>
+            </div>
+          </section>
+        )}
 
         {chainError && (
           <section className="payment-state-card">

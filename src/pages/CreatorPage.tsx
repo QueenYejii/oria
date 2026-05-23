@@ -84,6 +84,11 @@ export function CreatorPage() {
                   <MessageCircle size={18} />
                 </a>
               </div>
+              <div className="creator-presence-strip" aria-label="Creator presence">
+                <span>{activeNetwork}</span>
+                <span>{spaces.length} Spaces</span>
+                <span>{formatBytes(totalBytes)}</span>
+              </div>
             </div>
           </div>
           <div className="creator-actions">

@@ -89,6 +89,11 @@ export function ProductPreview() {
           <span>Signed upload request</span>
           <strong>Queued for Shelby RPC</strong>
         </div>
+
+        <div className="stage-proofline" aria-hidden="true">
+          <span />
+          <strong>Receipt mirror ready after purchase</strong>
+        </div>
       </div>
     </div>
   );

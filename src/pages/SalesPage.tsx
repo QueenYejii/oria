@@ -26,15 +26,18 @@ export function SalesPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState("newest");
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     if (!address) {
       setSales([]);
       setError(null);
+      setIsSyncing(false);
       return;
     }
 
     let cancelled = false;
+    setIsSyncing(true);
     getCreatorSales(address)
       .then((payload) => {
         if (cancelled) return;
@@ -46,6 +49,9 @@ export function SalesPage() {
         if (cancelled) return;
         setSales([]);
         setError(caught instanceof Error ? caught.message : String(caught));
+      })
+      .finally(() => {
+        if (!cancelled) setIsSyncing(false);
       });
 
     return () => {
@@ -199,6 +205,16 @@ export function SalesPage() {
           </div>
         </section>
 
+        {isSyncing && (
+          <section className="sync-state-card" aria-label="Sales sync status">
+            <span />
+            <div>
+              <strong>Syncing seller sales</strong>
+              <p>Reading registry purchases and mirrored receipts from the active network.</p>
+            </div>
+          </section>
+        )}
+
         {error && (
           <section className="payment-state-card failed">
             <div>
@@ -242,7 +258,7 @@ export function SalesPage() {
                   <div>
                     <strong>{space.title}</strong>
                     <span>
-                      {space.sales} sale{space.sales === 1 ? "" : "s"} · {space.buyers.size} buyer
+                      {space.sales} sale{space.sales === 1 ? "" : "s"} - {space.buyers.size} buyer
                       {space.buyers.size === 1 ? "" : "s"}
                     </span>
                   </div>

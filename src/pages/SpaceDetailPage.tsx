@@ -324,7 +324,7 @@ export function SpaceDetailPage() {
         {space ? (
           <>
             <section className="detail-hero">
-              <div>
+              <div className="detail-hero-main">
                 <div className="detail-eyebrow-row">
                   <p className="eyebrow">{space.network}</p>
                   <span className="network-badge stable">{space.visibility.replace("_", " ")}</span>
@@ -344,6 +344,11 @@ export function SpaceDetailPage() {
                     <span>Manifest</span>
                     <strong>v{space.manifestVersion}</strong>
                   </article>
+                </div>
+                <div className="detail-trust-strip" aria-label="Storage and registry status">
+                  <span>On-chain registry</span>
+                  <span>Shelby blobs</span>
+                  <span>{space.manifestHash ? "Manifest hashed" : "Hash pending"}</span>
                 </div>
               </div>
               <aside className="detail-registry-panel">
