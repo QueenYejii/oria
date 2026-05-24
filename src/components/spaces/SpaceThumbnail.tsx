@@ -5,6 +5,7 @@ import { getPreviewKind } from "../../lib/utils/files";
 import type { Space, SpaceFile } from "../../types/space";
 
 const thumbnailSizeLimit = 8 * 1024 * 1024;
+const thumbnailUrlCache = new Map<string, string>();
 
 function getThumbnailFile(space: Space): SpaceFile | null {
   if (
@@ -45,12 +46,19 @@ export function SpaceThumbnail({ space }: { space: Space }) {
     }
 
     const thumbnailFile = file;
+    const cacheKey = `${space.network}:${space.creator}:${thumbnailFile.blobName}`;
     let cancelled = false;
-    let nextObjectUrl: string | null = null;
 
     async function loadThumbnail() {
       setStatus("loading");
       setObjectUrl(null);
+
+      const cachedUrl = thumbnailUrlCache.get(cacheKey);
+      if (cachedUrl) {
+        setObjectUrl(cachedUrl);
+        setStatus("ready");
+        return;
+      }
 
       try {
         const client = createShelbyClient(space.network);
@@ -59,7 +67,8 @@ export function SpaceThumbnail({ space }: { space: Space }) {
           blobName: thumbnailFile.blobName,
         });
         const blob = await new Response(shelbyBlob.readable).blob();
-        nextObjectUrl = URL.createObjectURL(blob);
+        const nextObjectUrl = URL.createObjectURL(blob);
+        thumbnailUrlCache.set(cacheKey, nextObjectUrl);
 
         if (!cancelled) {
           setObjectUrl(nextObjectUrl);
@@ -74,7 +83,6 @@ export function SpaceThumbnail({ space }: { space: Space }) {
 
     return () => {
       cancelled = true;
-      if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl);
     };
   }, [file, space.creator, space.network]);
 

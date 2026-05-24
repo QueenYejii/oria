@@ -3,6 +3,7 @@ const cache = new Map();
 const registryCacheKey = "registry";
 const registryTtlMs = 15_000;
 const recordTtlMs = 30_000;
+const txLookupTtlMs = 5 * 60_000;
 
 function getCached(key) {
   const entry = cache.get(key);
@@ -272,6 +273,8 @@ function normalizeRecord(record) {
     visibility: Number(record.visibility),
     accessRule: Number(record.access_rule),
     priceOctas: Number(record.price_octas),
+    paymentCurrency: Number(record.payment_currency || 0) === 1 ? "SHELBY_USD" : "APT",
+    paymentAsset: record.payment_asset || record.payment_asset_address || "0x0",
     createdAtMicros: Number(record.created_at_micros),
     updatedAtMicros: Number(record.updated_at_micros),
   };
@@ -404,6 +407,59 @@ async function getPurchasesForSpace(spaceId) {
   }
 }
 
+async function getAccountTransactions(address, limit = 50) {
+  return aptos(`/accounts/${address}/transactions?limit=${limit}`);
+}
+
+function canonicalAddress(value) {
+  const raw = String(value || "").toLowerCase().replace(/^0x/, "");
+  const trimmed = raw.replace(/^0+/, "") || "0";
+  return `0x${trimmed}`;
+}
+
+function payloadFunctionName(transaction) {
+  return String(transaction?.payload?.function || "").replace(/^0x0+/, "0x").toLowerCase();
+}
+
+async function findPurchaseTransaction(params) {
+  const { registryAddress } = getConfig();
+  const buyer = String(params.buyer || "").toLowerCase();
+  const spaceId = String(params.spaceId || "");
+  const cacheKey = `purchase-tx:${buyer}:${spaceId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const expectedFunction = `${canonicalAddress(registryAddress)}::space_registry::purchase_space`;
+    const transactions = await getAccountTransactions(buyer, 75);
+    const match = (transactions || []).find((transaction) => {
+      const args = Array.isArray(transaction?.payload?.arguments) ? transaction.payload.arguments : [];
+
+      return (
+        transaction?.type === "user_transaction" &&
+        transaction?.success &&
+        canonicalAddress(transaction.sender) === canonicalAddress(buyer) &&
+        payloadFunctionName(transaction) === expectedFunction &&
+        canonicalAddress(args[0]) === canonicalAddress(registryAddress) &&
+        String(args[1]) === spaceId
+      );
+    });
+
+    const result = match
+      ? {
+          txHash: match.hash,
+          paidAt: match.timestamp ? Math.floor(Number(match.timestamp) / 1000) : undefined,
+          transactionVersion: match.version ? String(match.version) : undefined,
+          source: "chain_transaction_scan",
+        }
+      : null;
+
+    return setCached(cacheKey, result, txLookupTtlMs);
+  } catch {
+    return setCached(cacheKey, null, 60_000);
+  }
+}
+
 export async function listCreatorSales(address, searchParams = new URLSearchParams()) {
   const query = new URLSearchParams(searchParams);
   query.set("creator", String(address));
@@ -424,8 +480,9 @@ export async function listCreatorSales(address, searchParams = new URLSearchPara
         priceOctas: space.priceOctas,
         buyerCount: buyers.length,
         buyers,
-        estimatedRevenueOctas: buyers.length * Number(space.priceOctas || 0),
-        updatedAtMicros: space.updatedAtMicros,
+      estimatedRevenueOctas: buyers.length * Number(space.priceOctas || 0),
+      currency: space.paymentCurrency || "APT",
+      updatedAtMicros: space.updatedAtMicros,
       };
     }),
   );
@@ -437,20 +494,42 @@ export async function listCreatorSales(address, searchParams = new URLSearchPara
       manifestBlobName: space.manifestBlobName,
       buyer,
       amountOctas: space.priceOctas,
+      currency: space.currency || "APT",
       updatedAtMicros: space.updatedAtMicros,
     })),
   );
+  const enrich = searchParams.get("enrich") !== "0";
+  const enrichedSales = enrich
+    ? await Promise.all(
+        sales.map(async (sale) => {
+          const purchaseTx = await findPurchaseTransaction({
+            buyer: sale.buyer,
+            spaceId: sale.spaceId,
+          });
+
+          return purchaseTx
+            ? {
+                ...sale,
+                txHash: purchaseTx.txHash,
+                paidAt: purchaseTx.paidAt,
+                transactionVersion: purchaseTx.transactionVersion,
+                source: purchaseTx.source,
+              }
+            : sale;
+        }),
+      )
+    : sales;
 
   return {
     creator: String(address),
     spaces: salesBySpace,
-    sales,
+    sales: enrichedSales,
     summary: {
       paidSpaces: paidSpaces.length,
-      sales: sales.length,
-      estimatedRevenueOctas: sales.reduce((sum, sale) => sum + Number(sale.amountOctas || 0), 0),
+      sales: enrichedSales.length,
+      estimatedRevenueOctas: enrichedSales.reduce((sum, sale) => sum + Number(sale.amountOctas || 0), 0),
     },
-    source: "registry_purchases_table",
+    source: enrich ? "registry_purchases_table_with_tx_scan" : "registry_purchases_table",
   };
 }
 

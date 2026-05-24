@@ -9,9 +9,11 @@ function receiptToSale(receipt) {
     manifestBlobName: receipt.manifestBlobName || "",
     buyer: receipt.payer || receipt.buyer,
     amountOctas: Number(receipt.amountOctas || 0),
+    currency: receipt.currency || "APT",
     updatedAtMicros: Number(receipt.paidAt || 0) * 1000,
     paidAt: Number(receipt.paidAt || 0),
     txHash: receipt.txHash,
+    transactionVersion: receipt.transactionVersion,
     spaceTitle: receipt.spaceTitle,
     source: "receipt_mirror",
   };
@@ -28,6 +30,7 @@ function mergeSales(registrySales, receiptSales) {
       ...existing,
       txHash: existing?.txHash ?? sale.txHash,
       paidAt: existing?.paidAt ?? sale.paidAt,
+      transactionVersion: existing?.transactionVersion ?? sale.transactionVersion,
       spaceTitle: existing?.spaceTitle ?? sale.spaceTitle,
       source: existing?.source ?? sale.source ?? "registry_purchases_table",
     });

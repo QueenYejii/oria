@@ -39,6 +39,8 @@ export async function importRegistrySpaces(params: {
   network?: OriaNetwork;
   creator?: string;
   q?: string;
+  limit?: number;
+  offset?: number;
 }) {
   const records = await listRegistrySpaces(params);
   return Promise.all(records.map((record) => importRegistryRecord(record)));

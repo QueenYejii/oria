@@ -1273,7 +1273,8 @@ h1 {
 }
 
 .create-form input,
-.create-form textarea {
+.create-form textarea,
+.create-form select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 0.9rem;
@@ -1289,9 +1290,20 @@ h1 {
 }
 
 .create-form input:focus,
-.create-form textarea:focus {
+.create-form textarea:focus,
+.create-form select:focus {
   border-color: color-mix(in oklch, var(--teal) 52%, transparent);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--teal) 13%, transparent);
+}
+
+.paid-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.38fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.paid-settings-note {
+  grid-column: 1 / -1;
 }
 
 .cover-picker {
@@ -1685,6 +1697,8 @@ h1 {
     transform 260ms var(--ease-out-expo),
     border-color 260ms var(--ease-out-expo),
     box-shadow 260ms var(--ease-out-expo);
+  content-visibility: auto;
+  contain-intrinsic-size: 520px;
 }
 
 .space-card:hover {
@@ -2066,6 +2080,7 @@ h1 {
   box-shadow:
     0 18px 70px color-mix(in oklch, var(--ink) 7%, transparent),
     inset 0 1px 0 color-mix(in oklch, var(--paper) 88%, transparent);
+  contain: layout paint;
 }
 
 .preview-header {
@@ -3933,6 +3948,7 @@ h1 {
   }
 
   .cover-picker,
+  .paid-settings-grid,
   .space-revenue-row {
     grid-template-columns: 1fr;
   }
@@ -3961,6 +3977,31 @@ h1 {
 }
 
 @media (max-width: 620px) {
+  .grain {
+    opacity: 0.14;
+  }
+
+  .create-form,
+  .status-panel,
+  .empty-state,
+  .space-card,
+  .file-row,
+  .stage-shell,
+  .site-header,
+  .wallet-popover,
+  .preview-panel,
+  .creator-hero,
+  .detail-hero,
+  .payment-state-card,
+  .receipt-panel {
+    backdrop-filter: none;
+  }
+
+  .stage-sheen,
+  .hero-ambient span:nth-child(3) {
+    animation: none;
+  }
+
   .site-header {
     top: 0.5rem;
     width: calc(100% - 1rem);

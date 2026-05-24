@@ -1,4 +1,5 @@
 import type { OriaNetwork } from "../../types/network";
+import type { SpacePaymentCurrency } from "../../types/space";
 import { getDiscoveryApiUrl } from "../discovery/client";
 
 export type LocalPaymentRecord = {
@@ -8,7 +9,7 @@ export type LocalPaymentRecord = {
   txHash: string;
   paidAt: number;
   amountOctas?: number;
-  currency?: "APT";
+  currency?: SpacePaymentCurrency;
   spaceTitle?: string;
   creator?: string;
   receiptId?: string;

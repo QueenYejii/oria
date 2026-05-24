@@ -6,11 +6,12 @@ import { createShelbyClient } from "../lib/shelby/client";
 import { encodeSpaceManifest } from "../lib/spaces/manifest";
 import { registerSpaceOnChain } from "../lib/registry/client";
 import { saveSpace } from "../lib/spaces/local-store";
+import { clearUploadSession, saveUploadSession } from "../lib/upload/session-store";
 import { getAccountAddress } from "../lib/wallet/address";
 import { createBlobName, createId, fileToUint8Array } from "../lib/utils/files";
 import { getErrorMessage } from "../lib/utils/errors";
 import { sha256Hex } from "../lib/utils/hash";
-import type { Space, SpaceFile, SpaceVisibility } from "../types/space";
+import type { Space, SpaceFile, SpacePaymentCurrency, SpaceVisibility } from "../types/space";
 import type { UploadItem } from "../types/upload";
 
 type CreateSpaceInput = {
@@ -18,12 +19,15 @@ type CreateSpaceInput = {
   description: string;
   visibility: SpaceVisibility;
   priceOctas?: number;
+  paymentCurrency?: SpacePaymentCurrency;
+  expiresAtMs?: number;
   allowlist?: string[];
   publicCoverFile?: File | null;
   files: File[];
 };
 
 const thirtyDaysInMicros = 30 * 24 * 60 * 60 * 1_000_000;
+const minimumRetentionMs = 10 * 60 * 1000;
 const maxFileSize = 2 * 1024 * 1024 * 1024;
 const maxTotalSize = 5 * 1024 * 1024 * 1024;
 const maxCoverSize = 12 * 1024 * 1024;
@@ -39,15 +43,41 @@ export function useCreateSpace() {
   const [lastInput, setLastInput] = useState<CreateSpaceInput | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const cancelRequestedRef = useRef(false);
+  const sessionRef = useRef<{ spaceId: string; startedAt: number } | null>(null);
+
+  const persistSession = (nextItems: UploadItem[]) => {
+    if (!sessionRef.current) return;
+
+    saveUploadSession({
+      spaceId: sessionRef.current.spaceId,
+      startedAt: sessionRef.current.startedAt,
+      files: nextItems.map((item) => ({
+        name: item.file.name,
+        size: item.file.size,
+        type: item.file.type,
+        lastModified: item.file.lastModified,
+        status: item.status,
+        progress: item.progress,
+        progressLabel: item.progressLabel,
+        error: item.error,
+      })),
+    });
+  };
 
   const updateAll = (patch: Partial<UploadItem>) => {
-    setItems((current) => current.map((item) => ({ ...item, ...patch })));
+    setItems((current) => {
+      const next = current.map((item) => ({ ...item, ...patch }));
+      persistSession(next);
+      return next;
+    });
   };
 
   const updateItem = (index: number, patch: Partial<UploadItem>) => {
-    setItems((current) =>
-      current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
-    );
+    setItems((current) => {
+      const next = current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
+      persistSession(next);
+      return next;
+    });
   };
 
   const createSpace = async (input: CreateSpaceInput) => {
@@ -96,10 +126,15 @@ export function useCreateSpace() {
     }
 
     if (input.visibility === "paid" && (!input.priceOctas || input.priceOctas <= 0)) {
-      throw new Error("Set a valid APT price before publishing a paid Space.");
+      throw new Error("Set a valid price before publishing a paid Space.");
     }
 
     const now = Date.now();
+    const expiresAtMs = input.expiresAtMs ?? now + thirtyDaysInMicros / 1000;
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= now + minimumRetentionMs) {
+      throw new Error("Choose an expiration time at least 10 minutes from now.");
+    }
+
     const spaceId = createId("space");
 
     setCreatedSpace(null);
@@ -108,14 +143,27 @@ export function useCreateSpace() {
     const contentOffset = hasPublicCover ? 1 : 0;
     const queueFiles = input.publicCoverFile ? [input.publicCoverFile, ...input.files] : input.files;
 
-    setItems(
-      queueFiles.map((file, index) => ({
+    const initialItems: UploadItem[] = queueFiles.map((file, index) => ({
         id: createId("upload"),
         file,
         status: "queued",
         progressLabel: hasPublicCover && index === 0 ? "Public cover queued" : "Queued",
-      }))
-    );
+      }));
+    setItems(initialItems);
+    sessionRef.current = { spaceId, startedAt: now };
+    saveUploadSession({
+      spaceId,
+      startedAt: now,
+      files: initialItems.map((item) => ({
+        name: item.file.name,
+        size: item.file.size,
+        type: item.file.type,
+        lastModified: item.file.lastModified,
+        status: item.status,
+        progress: item.progress,
+        progressLabel: item.progressLabel,
+      })),
+    });
 
     try {
       const assertNotCancelled = () => {
@@ -172,7 +220,7 @@ export function useCreateSpace() {
 
       assertNotCancelled();
 
-      const expirationMicros = now * 1000 + thirtyDaysInMicros;
+      const expirationMicros = Math.floor(expiresAtMs * 1000);
 
       if (publicCoverBlob) {
         assertNotCancelled();
@@ -259,6 +307,7 @@ export function useCreateSpace() {
         thumbnailIsPublic: Boolean(publicCover) || input.visibility === "public",
         manifestBlobName,
         manifestVersion: 1,
+        manifestVersions: [],
         files,
         visibility: input.visibility,
         access:
@@ -273,9 +322,13 @@ export function useCreateSpace() {
         payment:
           input.visibility === "paid" && input.priceOctas
             ? {
-                currency: "APT",
+                currency: input.paymentCurrency ?? "APT",
                 priceOctas: input.priceOctas,
                 recipient: creator,
+                assetMetadataAddress:
+                  input.paymentCurrency === "SHELBY_USD"
+                    ? (import.meta.env.VITE_SHELBY_USD_METADATA_ADDRESS as string | undefined)
+                    : undefined,
               }
             : undefined,
         expiresAt: Math.floor(expirationMicros / 1000),
@@ -328,6 +381,8 @@ export function useCreateSpace() {
 
       saveSpace(space);
       setCreatedSpace(space);
+      clearUploadSession();
+      sessionRef.current = null;
 
       return space;
     } catch (error) {

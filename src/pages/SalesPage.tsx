@@ -4,7 +4,7 @@ import { AppHeader } from "../components/layout/AppHeader";
 import { getCreatorSales, type CreatorSaleRecord } from "../lib/access/sales";
 import { getSpace } from "../lib/spaces/local-store";
 import { getTransactionExplorerUrl } from "../lib/utils/explorer";
-import { formatDateTime, shortenAddress } from "../lib/utils/format";
+import { formatDateTime, formatPaymentAmount, shortenAddress } from "../lib/utils/format";
 import { getAccountAddress } from "../lib/wallet/address";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useSpaces } from "../hooks/useSpaces";
@@ -126,7 +126,7 @@ export function SalesPage() {
   }, [sales]);
   const exportCsv = () => {
     const rows = [
-      ["space_id", "title", "buyer", "amount_apt", "paid_at", "tx_hash", "source"],
+      ["space_id", "title", "buyer", "amount", "currency", "paid_at", "tx_hash", "source"],
       ...filteredSales.map((sale) => {
         const space = getSpace(sale.spaceId);
         const paidAt = saleTimestamp(sale);
@@ -136,6 +136,7 @@ export function SalesPage() {
           sale.spaceTitle ?? space?.title ?? "Paid Space",
           sale.buyer,
           String(sale.amountOctas / 100_000_000),
+          sale.currency ?? "APT",
           paidAt ? new Date(paidAt).toISOString() : "",
           sale.txHash ?? "",
           sale.source ?? "registry_purchases_table",
@@ -262,7 +263,7 @@ export function SalesPage() {
                       {space.buyers.size === 1 ? "" : "s"}
                     </span>
                   </div>
-                  <b>{(space.revenueOctas / 100_000_000).toLocaleString()} APT</b>
+                  <b>{formatPaymentAmount(space.revenueOctas)}</b>
                 </Link>
               ))}
             </div>
@@ -288,7 +289,7 @@ export function SalesPage() {
                     <code>{sale.txHash ?? sale.spaceId}</code>
                   </div>
                   <div>
-                    <strong>{(sale.amountOctas / 100_000_000).toLocaleString()} APT</strong>
+                    <strong>{formatPaymentAmount(sale.amountOctas, sale.currency)}</strong>
                     <span>{paidAt ? formatDateTime(paidAt) : "Timestamp pending"}</span>
                     {sale.txHash ? (
                       <a href={getTransactionExplorerUrl(sale.txHash, sale.network)} target="_blank" rel="noreferrer">

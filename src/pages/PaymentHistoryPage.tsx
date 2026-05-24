@@ -6,7 +6,7 @@ import { listLocalPayments, listMirroredReceipts, subscribeToPayments, type Loca
 import { getCreatorSales, type CreatorSaleRecord } from "../lib/access/sales";
 import { getSpace } from "../lib/spaces/local-store";
 import { getTransactionExplorerUrl } from "../lib/utils/explorer";
-import { formatDateTime, shortenAddress } from "../lib/utils/format";
+import { formatDateTime, formatPaymentAmount, shortenAddress } from "../lib/utils/format";
 import { getAccountAddress } from "../lib/wallet/address";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useSpaces } from "../hooks/useSpaces";
@@ -15,7 +15,9 @@ import { useEffect, useMemo, useState } from "react";
 function amountLabel(record: LocalPaymentRecord) {
   const space = getSpace(record.spaceId);
   const octas = record.amountOctas ?? space?.payment?.priceOctas;
-  return typeof octas === "number" && octas > 0 ? `${(octas / 100_000_000).toLocaleString()} APT` : "Verified";
+  return typeof octas === "number" && octas > 0
+    ? formatPaymentAmount(octas, record.currency ?? space?.payment?.currency)
+    : "Verified";
 }
 
 function mergePayments(localRecords: LocalPaymentRecord[], chainRecords: LocalPaymentRecord[]) {
@@ -250,7 +252,7 @@ export function PaymentHistoryPage() {
                     <code>{sale.spaceId}</code>
                   </div>
                   <div>
-                    <strong>{(sale.amountOctas / 100_000_000).toLocaleString()} APT</strong>
+                    <strong>{formatPaymentAmount(sale.amountOctas, sale.currency)}</strong>
                     <span>Registry verified</span>
                     <Link to={`/spaces/${sale.spaceId}`}>Open Space</Link>
                   </div>

@@ -44,7 +44,10 @@ async function getTransactionByHash(txHash) {
 function assertReceiptTransaction(receipt, transaction, spaceRecord) {
   const { registryAddress } = getConfig();
   const payload = transaction?.payload || {};
-  const expectedFunction = `${canonicalAddress(registryAddress)}::space_registry::purchase_space`;
+  const expectedFunction =
+    receipt.currency === "SHELBY_USD"
+      ? `${canonicalAddress(registryAddress)}::space_registry::purchase_space_shelby_usd`
+      : `${canonicalAddress(registryAddress)}::space_registry::purchase_space`;
   const actualFunction = String(payload.function || "").replace(/^0x0+/, "0x").toLowerCase();
   const args = Array.isArray(payload.arguments) ? payload.arguments : [];
 
@@ -61,7 +64,7 @@ function assertReceiptTransaction(receipt, transaction, spaceRecord) {
   }
 
   if (actualFunction !== expectedFunction) {
-    throw new Error("Receipt transaction is not an Oria purchase_space call.");
+    throw new Error("Receipt transaction is not an Oria purchase call.");
   }
 
   if (canonicalAddress(args[0]) !== canonicalAddress(registryAddress) || String(args[1]) !== receipt.spaceId) {
@@ -117,7 +120,7 @@ function normalizeReceipt(input) {
     creator: String(receipt.creator),
     txHash: String(receipt.txHash),
     amountOctas: Number(receipt.amountOctas || 0),
-    currency: receipt.currency === "APT" ? "APT" : "APT",
+    currency: receipt.currency === "SHELBY_USD" ? "SHELBY_USD" : "APT",
     spaceTitle: String(receipt.spaceTitle || "Paid Space"),
     paidAt: Number(receipt.paidAt || Date.now()),
     source: "receipt_mirror",

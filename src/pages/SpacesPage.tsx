@@ -29,7 +29,9 @@ export function SpacesPage() {
   const [media, setMedia] = useState<MediaFilter>("all");
   const [sort, setSort] = useState<SortMode>("newest");
   const gridRef = useRef<HTMLElement | null>(null);
-  const allSpaces = useSpaces().filter((space) => space.network === activeNetwork);
+  const allSpaces = useSpaces({ network: activeNetwork, q: query, limit: 36 }).filter(
+    (space) => space.network === activeNetwork,
+  );
 
   const spaces = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();

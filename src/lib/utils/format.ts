@@ -28,6 +28,11 @@ export function formatDateTime(value: number) {
   }).format(new Date(value));
 }
 
+export function formatPaymentAmount(amount: number, currency: string = "APT") {
+  const symbol = currency === "SHELBY_USD" ? "ShelbyUSD" : "APT";
+  return `${(amount / 100_000_000).toLocaleString()} ${symbol}`;
+}
+
 export function shortenAddress(address: string) {
   if (address.length <= 14) return address;
   return `${address.slice(0, 6)}...${address.slice(-6)}`;

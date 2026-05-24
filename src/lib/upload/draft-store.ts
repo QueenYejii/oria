@@ -12,6 +12,7 @@ export type UploadDraft = {
   description: string;
   visibility: SpaceVisibility;
   priceApt: string;
+  expiresAtLocal?: string;
   allowlistText: string;
   files: UploadDraftFile[];
   updatedAt: number;

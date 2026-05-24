@@ -18,7 +18,7 @@ import { getTransactionExplorerUrl } from "../lib/utils/explorer";
 import { useDownloadBlob } from "../hooks/useDownloadBlob";
 import { useSpace } from "../hooks/useSpaces";
 import type { OriaNetwork } from "../types/network";
-import { formatBytes, formatDate, formatDateTime, shortenAddress } from "../lib/utils/format";
+import { formatBytes, formatDate, formatDateTime, formatPaymentAmount, shortenAddress } from "../lib/utils/format";
 import { sha256Hex } from "../lib/utils/hash";
 import { useToasts } from "../providers/ToastProvider";
 import type { Space, SpaceVisibility } from "../types/space";
@@ -257,6 +257,15 @@ export function SpaceDetailPage() {
             : undefined,
         manifestHash: undefined,
         manifestVersion: space.manifestVersion + 1,
+        manifestVersions: [
+          ...(space.manifestVersions ?? []),
+          {
+            version: space.manifestVersion,
+            manifestBlobName: space.manifestBlobName,
+            manifestHash: space.manifestHash,
+            updatedAt: space.updatedAt,
+          },
+        ],
         updatedAt: Date.now(),
       };
       const manifestBytes = encodeSpaceManifest(nextDraft);
@@ -373,8 +382,7 @@ export function SpaceDetailPage() {
                 </dl>
                 {space.payment && (
                   <p>
-                    Price {(space.payment.priceOctas / 100_000_000).toLocaleString()}{" "}
-                    {space.payment.currency}
+                    Price {formatPaymentAmount(space.payment.priceOctas, space.payment.currency)}
                   </p>
                 )}
                 {isOwner && (
@@ -534,7 +542,7 @@ export function SpaceDetailPage() {
                         <dt>Amount</dt>
                         <dd>
                           {paymentReceipt.amountOctas
-                            ? `${(paymentReceipt.amountOctas / 100_000_000).toLocaleString()} APT`
+                            ? formatPaymentAmount(paymentReceipt.amountOctas, paymentReceipt.currency)
                             : "Verified"}
                         </dd>
                       </div>

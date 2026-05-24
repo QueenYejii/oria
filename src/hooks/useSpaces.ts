@@ -3,7 +3,7 @@ import { importRegistrySpace, importRegistrySpaces } from "../lib/discovery/impo
 import { getSpace, listSpaces, listSpacesByOwner, subscribeToSpaces } from "../lib/spaces/local-store";
 import type { OriaNetwork } from "../types/network";
 
-export function useSpaces(params: { network?: OriaNetwork; creator?: string; q?: string } = {}) {
+export function useSpaces(params: { network?: OriaNetwork; creator?: string; q?: string; limit?: number; offset?: number } = {}) {
   const [spaces, setSpaces] = useState(() => listSpaces());
 
   useEffect(() => subscribeToSpaces(() => setSpaces(listSpaces())), []);
@@ -20,7 +20,7 @@ export function useSpaces(params: { network?: OriaNetwork; creator?: string; q?:
     return () => {
       cancelled = true;
     };
-  }, [params.creator, params.network, params.q]);
+  }, [params.creator, params.limit, params.network, params.offset, params.q]);
 
   return spaces;
 }

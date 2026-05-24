@@ -9,14 +9,22 @@ export const spaceFileSchema = z.object({
 });
 
 export const spacePaymentSchema = z.object({
-  currency: z.literal("APT"),
+  currency: z.enum(["APT", "SHELBY_USD"]),
   priceOctas: z.number().int().positive(),
   recipient: z.string().min(1),
+  assetMetadataAddress: z.string().optional(),
 });
 
 export const spaceAccessSchema = z.object({
   rule: z.enum(["public", "allowlist", "creator_only", "paid"]),
   allowlist: z.array(z.string().min(1)).optional(),
+});
+
+export const spaceManifestVersionSchema = z.object({
+  version: z.number().int().positive(),
+  manifestBlobName: z.string().optional(),
+  manifestHash: z.string().optional(),
+  updatedAt: z.number(),
 });
 
 export const spaceSchema = z.object({
@@ -33,6 +41,7 @@ export const spaceSchema = z.object({
   manifestBlobName: z.string().optional(),
   manifestHash: z.string().optional(),
   manifestVersion: z.number().int().positive().default(1),
+  manifestVersions: z.array(spaceManifestVersionSchema).optional(),
   files: z.array(spaceFileSchema),
   visibility: z.enum(["public", "wallet_gated", "paid"]),
   access: spaceAccessSchema.default({ rule: "public" }),

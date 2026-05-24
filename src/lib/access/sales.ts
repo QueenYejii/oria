@@ -1,5 +1,6 @@
 import { getDiscoveryApiUrl } from "../discovery/client";
 import type { OriaNetwork } from "../../types/network";
+import type { SpacePaymentCurrency } from "../../types/space";
 
 export type CreatorSaleRecord = {
   spaceId: string;
@@ -8,11 +9,13 @@ export type CreatorSaleRecord = {
   manifestBlobName: string;
   buyer: string;
   amountOctas: number;
+  currency?: SpacePaymentCurrency;
   updatedAtMicros: number;
   paidAt?: number;
   txHash?: string;
   spaceTitle?: string;
-  source?: "receipt_mirror" | "registry_purchases_table";
+  transactionVersion?: string;
+  source?: "receipt_mirror" | "registry_purchases_table" | "chain_transaction_scan";
 };
 
 export type CreatorSalesPayload = {
@@ -34,7 +37,7 @@ export type CreatorSalesPayload = {
     sales: number;
     estimatedRevenueOctas: number;
   };
-  source: "registry_purchases_table";
+  source: "registry_purchases_table" | "registry_purchases_table_with_tx_scan";
   receiptStore?: {
     mode: string;
     persistent: boolean;

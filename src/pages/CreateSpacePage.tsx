@@ -16,13 +16,23 @@ import {
   saveUploadDraft,
   saveUploadDraftFiles,
 } from "../lib/upload/draft-store";
+import { loadUploadSession } from "../lib/upload/session-store";
 import {
   getAccountAddress,
   getWalletNetworkLabel,
   isWalletNetworkCompatible,
 } from "../lib/wallet/address";
 import { formatBytes, shortenAddress } from "../lib/utils/format";
-import type { SpaceVisibility } from "../types/space";
+import type { SpacePaymentCurrency, SpaceVisibility } from "../types/space";
+
+function toDateTimeLocal(value: Date) {
+  const offsetMs = value.getTimezoneOffset() * 60 * 1000;
+  return new Date(value.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function getDefaultExpiryLocal() {
+  return toDateTimeLocal(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+}
 
 export function CreateSpacePage() {
   const navigate = useNavigate();
@@ -33,7 +43,9 @@ export function CreateSpacePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<SpaceVisibility>("public");
+  const [paymentCurrency, setPaymentCurrency] = useState<SpacePaymentCurrency>("APT");
   const [priceApt, setPriceApt] = useState("0.01");
+  const [expiresAtLocal, setExpiresAtLocal] = useState(getDefaultExpiryLocal);
   const [allowlistText, setAllowlistText] = useState("");
   const [publicCoverFile, setPublicCoverFile] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -53,12 +65,20 @@ export function CreateSpacePage() {
 
   useEffect(() => {
     const draft = loadUploadDraft();
+    const session = loadUploadSession();
+    if (session) {
+      setRestoredDraftNotice(
+        `Recovered upload session ${session.spaceId} with ${session.files.length} tracked file(s). Re-select files to retry unfinished uploads.`,
+      );
+    }
+
     if (!draft) return;
 
     setTitle(draft.title);
     setDescription(draft.description);
     setVisibility(draft.visibility);
     setPriceApt(draft.priceApt);
+    setExpiresAtLocal(draft.expiresAtLocal || getDefaultExpiryLocal());
     setAllowlistText(draft.allowlistText);
 
     loadUploadDraftFiles().then((draftFiles) => {
@@ -90,6 +110,7 @@ export function CreateSpacePage() {
       description,
       visibility,
       priceApt,
+      expiresAtLocal,
       allowlistText,
       files: files.map((file) => ({
         name: file.name,
@@ -99,7 +120,7 @@ export function CreateSpacePage() {
       })),
     });
     void saveUploadDraftFiles(files);
-  }, [allowlistText, description, files, priceApt, title, visibility]);
+  }, [allowlistText, description, expiresAtLocal, files, priceApt, title, visibility]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -111,6 +132,8 @@ export function CreateSpacePage() {
         description,
         visibility,
         priceOctas: visibility === "paid" ? Math.round(Number(priceApt) * 100_000_000) : undefined,
+        paymentCurrency,
+        expiresAtMs: new Date(expiresAtLocal).getTime(),
         allowlist: allowlistText
           .split(/[\s,]+/)
           .map((value) => value.trim())
@@ -203,18 +226,46 @@ export function CreateSpacePage() {
           </div>
 
           {visibility === "paid" && (
-            <label>
-              <span>Price in APT</span>
-              <input
-                min="0.000001"
-                step="0.000001"
-                type="number"
-                value={priceApt}
-                onChange={(event) => setPriceApt(event.target.value)}
-                placeholder="0.01"
-              />
-            </label>
+            <div className="paid-settings-grid">
+              <label>
+                <span>Payment asset</span>
+                <select
+                  value={paymentCurrency}
+                  onChange={(event) => setPaymentCurrency(event.target.value as SpacePaymentCurrency)}
+                >
+                  <option value="APT">APT</option>
+                  <option value="SHELBY_USD">ShelbyUSD</option>
+                </select>
+              </label>
+              <label>
+                <span>Price in {paymentCurrency === "SHELBY_USD" ? "ShelbyUSD" : "APT"}</span>
+                <input
+                  min="0.000001"
+                  step="0.000001"
+                  type="number"
+                  value={priceApt}
+                  onChange={(event) => setPriceApt(event.target.value)}
+                  placeholder="0.01"
+                />
+              </label>
+              {paymentCurrency === "SHELBY_USD" && (
+                <p className="form-note paid-settings-note">
+                  ShelbyUSD requires the Oria payment v2 registry and ShelbyUSD metadata env before
+                  publishing or unlocking can settle correctly.
+                </p>
+              )}
+            </div>
           )}
+
+          <label>
+            <span>File expiration</span>
+            <input
+              type="datetime-local"
+              value={expiresAtLocal}
+              min={toDateTimeLocal(new Date(Date.now() + 10 * 60 * 1000))}
+              onChange={(event) => setExpiresAtLocal(event.target.value)}
+            />
+          </label>
 
           {visibility === "wallet_gated" && (
             <label>
