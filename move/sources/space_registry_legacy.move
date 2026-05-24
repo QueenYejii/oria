@@ -1,13 +1,10 @@
-module oria::space_registry_v2 {
+module oria::space_registry {
     use std::signer;
     use std::string::String;
     use std::vector;
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin;
     use aptos_framework::event;
-    use aptos_framework::fungible_asset::Metadata;
-    use aptos_framework::object::{Self, Object};
-    use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
     use aptos_std::table::{Self, Table};
 
@@ -19,17 +16,7 @@ module oria::space_registry_v2 {
     const E_NOT_PAID_SPACE: u64 = 6;
     const E_ALREADY_PURCHASED: u64 = 7;
 
-    const VISIBILITY_PUBLIC: u8 = 0;
-    const VISIBILITY_WALLET_GATED: u8 = 1;
     const VISIBILITY_PAID: u8 = 2;
-
-    const ACCESS_PUBLIC: u8 = 0;
-    const ACCESS_ALLOWLIST: u8 = 1;
-    const ACCESS_CREATOR_ONLY: u8 = 2;
-    const ACCESS_PAID: u8 = 3;
-
-    const PAYMENT_APT: u8 = 0;
-    const PAYMENT_SHELBY_USD: u8 = 1;
 
     struct Registry has key {
         spaces: Table<String, SpaceRecord>,
@@ -37,16 +24,6 @@ module oria::space_registry_v2 {
         creator_spaces: Table<address, vector<String>>,
         purchases: Table<String, vector<address>>,
         allowlists: Table<String, vector<address>>,
-        creator_profiles: Table<address, CreatorProfile>,
-    }
-
-    struct CreatorProfile has store, drop {
-        creator: address,
-        display_name: String,
-        bio: String,
-        avatar_blob_name: String,
-        links_blob_name: String,
-        updated_at_micros: u64,
     }
 
     struct SpaceRecord has store, drop {
@@ -59,8 +36,6 @@ module oria::space_registry_v2 {
         visibility: u8,
         access_rule: u8,
         price_octas: u64,
-        payment_currency: u8,
-        payment_asset: address,
         created_at_micros: u64,
         updated_at_micros: u64,
     }
@@ -76,8 +51,6 @@ module oria::space_registry_v2 {
         visibility: u8,
         access_rule: u8,
         price_octas: u64,
-        payment_currency: u8,
-        payment_asset: address,
         created_at_micros: u64,
     }
 
@@ -97,19 +70,7 @@ module oria::space_registry_v2 {
         creator: address,
         buyer: address,
         price_octas: u64,
-        payment_currency: u8,
-        payment_asset: address,
         purchased_at_micros: u64,
-    }
-
-    #[event]
-    struct CreatorProfileUpdated has drop, store {
-        creator: address,
-        display_name: String,
-        bio: String,
-        avatar_blob_name: String,
-        links_blob_name: String,
-        updated_at_micros: u64,
     }
 
     public entry fun initialize(admin: &signer) {
@@ -122,49 +83,6 @@ module oria::space_registry_v2 {
             creator_spaces: table::new<address, vector<String>>(),
             purchases: table::new<String, vector<address>>(),
             allowlists: table::new<String, vector<address>>(),
-            creator_profiles: table::new<address, CreatorProfile>(),
-        });
-    }
-
-    public entry fun update_creator_profile(
-        creator: &signer,
-        registry_address: address,
-        display_name: String,
-        bio: String,
-        avatar_blob_name: String,
-        links_blob_name: String,
-    ) acquires Registry {
-        assert!(exists<Registry>(registry_address), E_NOT_INITIALIZED);
-        let registry = borrow_global_mut<Registry>(registry_address);
-        let creator_address = signer::address_of(creator);
-        let now = timestamp::now_microseconds();
-        let profile = CreatorProfile {
-            creator: creator_address,
-            display_name: copy display_name,
-            bio: copy bio,
-            avatar_blob_name: copy avatar_blob_name,
-            links_blob_name: copy links_blob_name,
-            updated_at_micros: now,
-        };
-
-        if (table::contains(&registry.creator_profiles, creator_address)) {
-            let current = table::borrow_mut(&mut registry.creator_profiles, creator_address);
-            current.display_name = profile.display_name;
-            current.bio = profile.bio;
-            current.avatar_blob_name = profile.avatar_blob_name;
-            current.links_blob_name = profile.links_blob_name;
-            current.updated_at_micros = profile.updated_at_micros;
-        } else {
-            table::add(&mut registry.creator_profiles, creator_address, profile);
-        };
-
-        event::emit(CreatorProfileUpdated {
-            creator: creator_address,
-            display_name,
-            bio,
-            avatar_blob_name,
-            links_blob_name,
-            updated_at_micros: now,
         });
     }
 
@@ -179,8 +97,6 @@ module oria::space_registry_v2 {
         visibility: u8,
         access_rule: u8,
         price_octas: u64,
-        payment_currency: u8,
-        payment_asset: address,
         allowlist: vector<address>,
     ) acquires Registry {
         assert!(exists<Registry>(registry_address), E_NOT_INITIALIZED);
@@ -199,8 +115,6 @@ module oria::space_registry_v2 {
             visibility,
             access_rule,
             price_octas,
-            payment_currency,
-            payment_asset,
             created_at_micros: now,
             updated_at_micros: now,
         };
@@ -233,8 +147,6 @@ module oria::space_registry_v2 {
             visibility,
             access_rule,
             price_octas,
-            payment_currency,
-            payment_asset,
             created_at_micros: now,
         });
     }
@@ -271,41 +183,6 @@ module oria::space_registry_v2 {
         });
     }
 
-    public entry fun update_space_terms(
-        creator: &signer,
-        registry_address: address,
-        space_id: String,
-        visibility: u8,
-        access_rule: u8,
-        price_octas: u64,
-        payment_currency: u8,
-        payment_asset: address,
-        allowlist: vector<address>,
-    ) acquires Registry {
-        assert!(exists<Registry>(registry_address), E_NOT_INITIALIZED);
-        let registry = borrow_global_mut<Registry>(registry_address);
-        assert!(table::contains(&registry.spaces, space_id), E_SPACE_NOT_FOUND);
-
-        let record = table::borrow_mut(&mut registry.spaces, space_id);
-        let creator_address = signer::address_of(creator);
-        assert!(record.creator == creator_address, E_NOT_CREATOR);
-
-        record.visibility = visibility;
-        record.access_rule = access_rule;
-        record.price_octas = price_octas;
-        record.payment_currency = payment_currency;
-        record.payment_asset = payment_asset;
-        record.updated_at_micros = timestamp::now_microseconds();
-
-        if (table::contains(&registry.allowlists, space_id)) {
-            table::remove(&mut registry.allowlists, space_id);
-        };
-
-        if (!vector::is_empty(&allowlist)) {
-            table::add(&mut registry.allowlists, space_id, allowlist);
-        };
-    }
-
     public entry fun add_to_allowlist(
         creator: &signer,
         registry_address: address,
@@ -338,12 +215,7 @@ module oria::space_registry_v2 {
         assert!(table::contains(&registry.spaces, space_id), E_SPACE_NOT_FOUND);
 
         let record = table::borrow(&registry.spaces, space_id);
-        assert!(
-            record.visibility == VISIBILITY_PAID &&
-            record.price_octas > 0 &&
-            record.payment_currency == PAYMENT_APT,
-            E_NOT_PAID_SPACE
-        );
+        assert!(record.visibility == VISIBILITY_PAID && record.price_octas > 0, E_NOT_PAID_SPACE);
         let buyer_address = signer::address_of(buyer);
 
         if (!table::contains(&registry.purchases, space_id)) {
@@ -361,49 +233,6 @@ module oria::space_registry_v2 {
             creator: record.creator,
             buyer: buyer_address,
             price_octas: record.price_octas,
-            payment_currency: record.payment_currency,
-            payment_asset: record.payment_asset,
-            purchased_at_micros: timestamp::now_microseconds(),
-        });
-    }
-
-    public entry fun purchase_space_shelby_usd(
-        buyer: &signer,
-        registry_address: address,
-        space_id: String,
-        payment_asset: Object<Metadata>,
-    ) acquires Registry {
-        assert!(exists<Registry>(registry_address), E_NOT_INITIALIZED);
-        let registry = borrow_global_mut<Registry>(registry_address);
-        assert!(table::contains(&registry.spaces, space_id), E_SPACE_NOT_FOUND);
-
-        let record = table::borrow(&registry.spaces, space_id);
-        assert!(
-            record.visibility == VISIBILITY_PAID &&
-            record.price_octas > 0 &&
-            record.payment_currency == PAYMENT_SHELBY_USD &&
-            record.payment_asset == object::object_address(&payment_asset),
-            E_NOT_PAID_SPACE
-        );
-        let buyer_address = signer::address_of(buyer);
-
-        if (!table::contains(&registry.purchases, space_id)) {
-            table::add(&mut registry.purchases, space_id, vector::empty<address>());
-        };
-
-        let buyers = table::borrow_mut(&mut registry.purchases, space_id);
-        assert!(!contains_address(buyers, buyer_address), E_ALREADY_PURCHASED);
-
-        primary_fungible_store::transfer(buyer, payment_asset, record.creator, record.price_octas);
-        vector::push_back(buyers, buyer_address);
-
-        event::emit(SpacePurchased {
-            space_id,
-            creator: record.creator,
-            buyer: buyer_address,
-            price_octas: record.price_octas,
-            payment_currency: record.payment_currency,
-            payment_asset: record.payment_asset,
             purchased_at_micros: timestamp::now_microseconds(),
         });
     }

@@ -1,11 +1,25 @@
 import { AppHeader } from "../components/layout/AppHeader";
 import { SpaceCard } from "../components/spaces/SpaceCard";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useSpaces } from "../hooks/useSpaces";
+import {
+  encodeCreatorProfileLinks,
+  fetchCreatorProfile,
+  getLocalCreatorProfile,
+  mergeCreatorProfiles,
+  saveLocalCreatorProfile,
+  subscribeToCreatorProfiles,
+  type CreatorProfile,
+} from "../lib/creator/profile";
+import { updateCreatorProfileOnChain } from "../lib/registry/client";
 import { formatBytes, formatDate, shortenAddress } from "../lib/utils/format";
+import { getAccountAddress } from "../lib/wallet/address";
+import { getErrorMessage } from "../lib/utils/errors";
 import { useToasts } from "../providers/ToastProvider";
-import { Copy, Github, MessageCircle, Send, ShieldCheck, Sparkles, Twitter } from "lucide-react";
+import { Copy, Github, MessageCircle, Save, Send, ShieldCheck, Sparkles, Twitter } from "lucide-react";
 import type { CSSProperties } from "react";
 
 function getCreatorHue(address?: string) {
@@ -15,8 +29,25 @@ function getCreatorHue(address?: string) {
 
 export function CreatorPage() {
   const { address } = useParams();
+  const wallet = useWallet();
   const { activeNetwork } = useActiveNetwork();
   const { notify } = useToasts();
+  const viewer = getAccountAddress(wallet.account);
+  const isOwner = Boolean(address && viewer && address.toLowerCase() === viewer.toLowerCase());
+  const localProfile = useMemo(() => getLocalCreatorProfile(address), [address]);
+  const [profile, setProfile] = useState<CreatorProfile | null>(localProfile);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileDraft, setProfileDraft] = useState({
+    displayName: "",
+    bio: "",
+    avatar: "",
+    website: "",
+    github: "https://github.com/QueenYejii/oria",
+    twitter: "https://x.com/QueenYejii24",
+    telegram: "https://t.me/QueenYejii24",
+  });
   const spaces = useSpaces({ creator: address, network: activeNetwork }).filter(
     (space) =>
       (!address || space.creator.toLowerCase() === address.toLowerCase()) &&
@@ -36,10 +67,92 @@ export function CreatorPage() {
     ),
   ).slice(0, 4);
   const hue = getCreatorHue(address);
+  const displayName = profile?.displayName || (address ? shortenAddress(address) : "Unknown creator");
+  const socialLinks = profile?.links ?? profileDraft;
+
+  useEffect(() => subscribeToCreatorProfiles(() => setProfile(getLocalCreatorProfile(address))), [address]);
+
+  useEffect(() => {
+    if (!address) return;
+    let cancelled = false;
+
+    fetchCreatorProfile(address)
+      .then((registryProfile) => {
+        if (cancelled) return;
+        setProfile(mergeCreatorProfiles(registryProfile, getLocalCreatorProfile(address)));
+      })
+      .catch(() => {
+        if (!cancelled) setProfile(getLocalCreatorProfile(address));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  useEffect(() => {
+    setProfileDraft({
+      displayName: profile?.displayName || "",
+      bio: profile?.bio || "",
+      avatar: profile?.avatar || "",
+      website: profile?.links.website || "",
+      github: profile?.links.github || "https://github.com/QueenYejii/oria",
+      twitter: profile?.links.twitter || "https://x.com/QueenYejii24",
+      telegram: profile?.links.telegram || "https://t.me/QueenYejii24",
+    });
+  }, [profile]);
+
   const copyAddress = async () => {
     if (!address) return;
     await navigator.clipboard.writeText(address);
     notify({ tone: "success", title: "Creator address copied" });
+  };
+
+  const saveProfile = async () => {
+    if (!address || !isOwner) return;
+
+    setIsSavingProfile(true);
+    setProfileError(null);
+
+    try {
+      const links = {
+        website: profileDraft.website.trim(),
+        github: profileDraft.github.trim(),
+        twitter: profileDraft.twitter.trim(),
+        telegram: profileDraft.telegram.trim(),
+      };
+      const nextProfile: CreatorProfile = {
+        address,
+        displayName: profileDraft.displayName.trim() || shortenAddress(address),
+        bio: profileDraft.bio.trim(),
+        avatar: profileDraft.avatar.trim(),
+        links,
+        updatedAt: Date.now(),
+        source: "local",
+      };
+      const txHash = await updateCreatorProfileOnChain({
+        displayName: nextProfile.displayName,
+        bio: nextProfile.bio,
+        avatar: nextProfile.avatar,
+        links: encodeCreatorProfileLinks(links),
+        signAndSubmitTransaction: wallet.signAndSubmitTransaction,
+      });
+
+      saveLocalCreatorProfile(txHash ? { ...nextProfile, source: "registry" } : nextProfile);
+      setProfile(txHash ? { ...nextProfile, source: "registry" } : nextProfile);
+      setIsEditingProfile(false);
+      notify({
+        tone: "success",
+        title: "Creator profile saved",
+        message: txHash ? "Profile update was submitted to the registry." : "Profile saved locally until registry v2 is active.",
+      });
+    } catch (caught) {
+      const message = getErrorMessage(caught);
+      setProfileError(message);
+      notify({ tone: "error", title: "Profile update failed", message });
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   return (
@@ -50,17 +163,21 @@ export function CreatorPage() {
         <section className="creator-hero">
           <div className="creator-identity">
             <div className="creator-avatar" style={{ "--avatar-hue": hue } as CSSProperties}>
-              <span>{address?.slice(2, 4).toUpperCase() ?? "OR"}</span>
+              {profile?.avatar ? (
+                <img src={profile.avatar} alt="" />
+              ) : (
+                <span>{displayName.slice(0, 2).toUpperCase()}</span>
+              )}
             </div>
             <div className="creator-bio">
               <div className="detail-eyebrow-row">
                 <p className="eyebrow">Creator profile</p>
                 <span className="network-badge stable">{activeNetwork}</span>
               </div>
-              <h1>{address ? shortenAddress(address) : "Unknown creator"}</h1>
+              <h1>{displayName}</h1>
               <p>
-                A Shelby-backed publishing profile for media Spaces, release manifests, and
-                unlockable creator archives indexed by Oria.
+                {profile?.bio ||
+                  "A Shelby-backed publishing profile for media Spaces, release manifests, and unlockable creator archives indexed by Oria."}
               </p>
               <div className="creator-address-row">
                 <code>{address ?? "No address supplied"}</code>
@@ -71,15 +188,21 @@ export function CreatorPage() {
                 )}
               </div>
               <div className="creator-socials" aria-label="Creator and project links">
-                <a href="https://github.com/QueenYejii/oria" target="_blank" rel="noreferrer" aria-label="GitHub">
-                  <Github size={18} />
-                </a>
-                <a href="https://t.me/QueenYejii24" target="_blank" rel="noreferrer" aria-label="Telegram">
-                  <Send size={18} />
-                </a>
-                <a href="https://x.com/QueenYejii24" target="_blank" rel="noreferrer" aria-label="X">
-                  <Twitter size={18} />
-                </a>
+                {(socialLinks.github || "https://github.com/QueenYejii/oria") && (
+                  <a href={socialLinks.github || "https://github.com/QueenYejii/oria"} target="_blank" rel="noreferrer" aria-label="GitHub">
+                    <Github size={18} />
+                  </a>
+                )}
+                {(socialLinks.telegram || "https://t.me/QueenYejii24") && (
+                  <a href={socialLinks.telegram || "https://t.me/QueenYejii24"} target="_blank" rel="noreferrer" aria-label="Telegram">
+                    <Send size={18} />
+                  </a>
+                )}
+                {(socialLinks.twitter || "https://x.com/QueenYejii24") && (
+                  <a href={socialLinks.twitter || "https://x.com/QueenYejii24"} target="_blank" rel="noreferrer" aria-label="X">
+                    <Twitter size={18} />
+                  </a>
+                )}
                 <a href="https://discord.com/invite/shelbyserves" target="_blank" rel="noreferrer" aria-label="Discord">
                   <MessageCircle size={18} />
                 </a>
@@ -95,11 +218,78 @@ export function CreatorPage() {
             <Link className="button secondary" to="/spaces">
               Browse all Spaces
             </Link>
+            {isOwner && (
+              <button className="button secondary" type="button" onClick={() => setIsEditingProfile((value) => !value)}>
+                {isEditingProfile ? "Close editor" : "Edit profile"}
+              </button>
+            )}
             <Link className="button primary" to="/create">
               Publish Space
             </Link>
           </div>
         </section>
+
+        {isOwner && isEditingProfile && (
+          <section className="creator-editor-panel">
+            <div className="section-label">
+              <p className="eyebrow">Creator identity</p>
+              <h2>Update public profile</h2>
+            </div>
+            <div className="creator-editor-grid">
+              <label>
+                <span>Display name</span>
+                <input
+                  value={profileDraft.displayName}
+                  onChange={(event) => setProfileDraft((draft) => ({ ...draft, displayName: event.target.value }))}
+                  placeholder="QueenYejii"
+                />
+              </label>
+              <label>
+                <span>Avatar URL</span>
+                <input
+                  value={profileDraft.avatar}
+                  onChange={(event) => setProfileDraft((draft) => ({ ...draft, avatar: event.target.value }))}
+                  placeholder="https://..."
+                />
+              </label>
+              <label className="wide">
+                <span>Bio</span>
+                <textarea
+                  value={profileDraft.bio}
+                  onChange={(event) => setProfileDraft((draft) => ({ ...draft, bio: event.target.value }))}
+                  rows={4}
+                  placeholder="What do you publish with Oria?"
+                />
+              </label>
+              <label>
+                <span>Website</span>
+                <input value={profileDraft.website} onChange={(event) => setProfileDraft((draft) => ({ ...draft, website: event.target.value }))} />
+              </label>
+              <label>
+                <span>GitHub</span>
+                <input value={profileDraft.github} onChange={(event) => setProfileDraft((draft) => ({ ...draft, github: event.target.value }))} />
+              </label>
+              <label>
+                <span>X / Twitter</span>
+                <input value={profileDraft.twitter} onChange={(event) => setProfileDraft((draft) => ({ ...draft, twitter: event.target.value }))} />
+              </label>
+              <label>
+                <span>Telegram</span>
+                <input value={profileDraft.telegram} onChange={(event) => setProfileDraft((draft) => ({ ...draft, telegram: event.target.value }))} />
+              </label>
+            </div>
+            {profileError && <p className="form-error">{profileError}</p>}
+            <div className="form-actions">
+              <button className="button primary" type="button" disabled={isSavingProfile} onClick={saveProfile}>
+                <Save size={17} aria-hidden="true" />
+                {isSavingProfile ? "Saving..." : "Save profile"}
+              </button>
+              <button className="button secondary" type="button" onClick={() => setIsEditingProfile(false)}>
+                Cancel
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="creator-showcase" aria-label="Creator publishing summary">
           <article>

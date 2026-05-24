@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useActiveNetwork } from "./useActiveNetwork";
 import { createShelbyClient } from "../lib/shelby/client";
 import { encodeSpaceManifest } from "../lib/spaces/manifest";
-import { registerSpaceOnChain } from "../lib/registry/client";
+import { getPaymentAssetAddress, registerSpaceOnChain } from "../lib/registry/client";
 import { saveSpace } from "../lib/spaces/local-store";
 import { clearUploadSession, saveUploadSession } from "../lib/upload/session-store";
 import { getAccountAddress } from "../lib/wallet/address";
@@ -327,7 +327,7 @@ export function useCreateSpace() {
                 recipient: creator,
                 assetMetadataAddress:
                   input.paymentCurrency === "SHELBY_USD"
-                    ? (import.meta.env.VITE_SHELBY_USD_METADATA_ADDRESS as string | undefined)
+                    ? getPaymentAssetAddress("SHELBY_USD")
                     : undefined,
               }
             : undefined,

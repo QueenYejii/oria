@@ -1655,7 +1655,9 @@ h1 {
 .market-filters select,
 .edit-grid input,
 .edit-grid select,
-.edit-grid textarea {
+.edit-grid textarea,
+.creator-editor-grid input,
+.creator-editor-grid textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 0.9rem;
@@ -2265,6 +2267,44 @@ h1 {
   font-weight: 900;
 }
 
+.edit-cover-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px dashed color-mix(in oklch, var(--teal) 32%, transparent);
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(280px 120px at 100% 0%, color-mix(in oklch, var(--teal) 10%, transparent), transparent 70%),
+    color-mix(in oklch, var(--paper) 58%, transparent);
+}
+
+.edit-cover-panel input[type="file"] {
+  display: none;
+}
+
+.edit-cover-panel strong {
+  display: block;
+  margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.edit-cover-panel p {
+  margin-top: 0.3rem;
+  color: color-mix(in oklch, var(--ink) 58%, var(--paper));
+  line-height: 1.5;
+}
+
+.edit-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .payment-list {
   display: grid;
   gap: 0.85rem;
@@ -2706,6 +2746,13 @@ h1 {
   font-weight: 950;
 }
 
+.creator-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 .creator-bio {
   flex: 1;
 }
@@ -2812,6 +2859,43 @@ h1 {
   color: var(--paper);
   background: var(--ink);
   cursor: pointer;
+}
+
+.creator-editor-panel {
+  display: grid;
+  gap: 1rem;
+  margin: -0.65rem 0 1.4rem;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid color-mix(in oklch, var(--teal) 28%, transparent);
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(500px 220px at 0% 0%, color-mix(in oklch, var(--teal) 13%, transparent), transparent 72%),
+    linear-gradient(145deg, color-mix(in oklch, var(--paper) 80%, transparent), color-mix(in oklch, var(--mist) 16%, transparent)),
+    color-mix(in oklch, var(--paper) 74%, transparent);
+  box-shadow:
+    0 20px 70px color-mix(in oklch, var(--ink) 8%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--paper) 88%, transparent);
+}
+
+.creator-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.creator-editor-grid label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.creator-editor-grid label.wide {
+  grid-column: 1 / -1;
+}
+
+.creator-editor-grid span {
+  color: color-mix(in oklch, var(--ink) 58%, var(--paper));
+  font-size: 0.78rem;
+  font-weight: 900;
 }
 
 .creator-showcase {
@@ -3936,7 +4020,9 @@ h1 {
   }
 
   .creator-identity,
-  .creator-showcase {
+  .creator-showcase,
+  .creator-editor-grid,
+  .edit-cover-panel {
     grid-template-columns: 1fr;
   }
 
@@ -3954,7 +4040,8 @@ h1 {
   }
 
   .cover-picker .button,
-  .receipt-command-link {
+  .receipt-command-link,
+  .edit-cover-actions .button {
     width: 100%;
   }
 

@@ -1,4 +1,4 @@
-import { handleOptions, listRecords, sendJson } from "../_discovery.js";
+import { getCreatorProfile, handleOptions, listRecords, sendJson } from "../_discovery.js";
 
 export default async function handler(request, response) {
   if (handleOptions(request, response)) return;
@@ -9,6 +9,7 @@ export default async function handler(request, response) {
     url.searchParams.set("creator", String(address));
     sendJson(response, 200, {
       creator: String(address),
+      profile: await getCreatorProfile(String(address)),
       spaces: await listRecords(url.searchParams),
     });
   } catch (error) {

@@ -42,12 +42,12 @@ async function getTransactionByHash(txHash) {
 }
 
 function assertReceiptTransaction(receipt, transaction, spaceRecord) {
-  const { registryAddress } = getConfig();
+  const { registryAddress, registryModule } = getConfig();
   const payload = transaction?.payload || {};
   const expectedFunction =
     receipt.currency === "SHELBY_USD"
-      ? `${canonicalAddress(registryAddress)}::space_registry::purchase_space_shelby_usd`
-      : `${canonicalAddress(registryAddress)}::space_registry::purchase_space`;
+      ? `${canonicalAddress(registryAddress)}::${registryModule}::purchase_space_shelby_usd`
+      : `${canonicalAddress(registryAddress)}::${registryModule}::purchase_space`;
   const actualFunction = String(payload.function || "").replace(/^0x0+/, "0x").toLowerCase();
   const args = Array.isArray(payload.arguments) ? payload.arguments : [];
 

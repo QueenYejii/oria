@@ -25,6 +25,7 @@ function setCached(key, value, ttlMs) {
 
 export function getConfig() {
   const registryAddress = process.env.ORIA_REGISTRY_ADDRESS || process.env.VITE_ORIA_REGISTRY_ADDRESS;
+  const registryModule = process.env.ORIA_REGISTRY_MODULE || process.env.VITE_ORIA_REGISTRY_MODULE || "space_registry";
   const nodeUrl = process.env.APTOS_NODE_URL || process.env.VITE_APTOS_NODE_URL || defaultNodeUrl;
   const indexerUrl = process.env.APTOS_INDEXER_URL || process.env.VITE_APTOS_INDEXER_URL;
 
@@ -34,11 +35,12 @@ export function getConfig() {
 
   return {
     registryAddress,
+    registryModule,
     nodeUrl,
     indexerUrl,
-    registryType: `${registryAddress}::space_registry::Registry`,
-    spaceRecordType: `${registryAddress}::space_registry::SpaceRecord`,
-    purchaseEventType: `${registryAddress}::space_registry::SpacePurchased`,
+    registryType: `${registryAddress}::${registryModule}::Registry`,
+    spaceRecordType: `${registryAddress}::${registryModule}::SpaceRecord`,
+    purchaseEventType: `${registryAddress}::${registryModule}::SpacePurchased`,
   };
 }
 
@@ -391,6 +393,44 @@ export async function getAccess(spaceId, wallet) {
   };
 }
 
+function normalizeProfile(profile, fallbackAddress) {
+  if (!profile) return null;
+  const updatedAtMicros = Number(profile.updated_at_micros || profile.updatedAtMicros || 0);
+
+  return {
+    address: profile.creator || fallbackAddress,
+    creator: profile.creator || fallbackAddress,
+    displayName: profile.display_name || profile.displayName || "",
+    bio: profile.bio || "",
+    avatar: profile.avatar_blob_name || profile.avatarBlobName || "",
+    avatarBlobName: profile.avatar_blob_name || profile.avatarBlobName || "",
+    linksBlobName: profile.links_blob_name || profile.linksBlobName || "",
+    updatedAt: updatedAtMicros > 0 ? Math.floor(updatedAtMicros / 1000) : 0,
+    updatedAtMicros,
+    source: "registry",
+  };
+}
+
+export async function getCreatorProfile(address) {
+  const { registryAddress, registryModule } = getConfig();
+  const registry = await getRegistry();
+  const creatorProfilesHandle = tableHandle(registry.creator_profiles);
+  if (!creatorProfilesHandle) return null;
+
+  try {
+    const profile = await getTableItem(
+      creatorProfilesHandle,
+      "address",
+      `${registryAddress}::${registryModule}::CreatorProfile`,
+      address,
+    );
+
+    return normalizeProfile(profile, address);
+  } catch {
+    return null;
+  }
+}
+
 async function getPurchasesForSpace(spaceId) {
   const registry = await getRegistry();
   const purchasesHandle = tableHandle(registry.purchases);
@@ -422,7 +462,7 @@ function payloadFunctionName(transaction) {
 }
 
 async function findPurchaseTransaction(params) {
-  const { registryAddress } = getConfig();
+  const { registryAddress, registryModule } = getConfig();
   const buyer = String(params.buyer || "").toLowerCase();
   const spaceId = String(params.spaceId || "");
   const cacheKey = `purchase-tx:${buyer}:${spaceId}`;
@@ -430,7 +470,7 @@ async function findPurchaseTransaction(params) {
   if (cached) return cached;
 
   try {
-    const expectedFunction = `${canonicalAddress(registryAddress)}::space_registry::purchase_space`;
+    const expectedFunction = `${canonicalAddress(registryAddress)}::${registryModule}::purchase_space`;
     const transactions = await getAccountTransactions(buyer, 75);
     const match = (transactions || []).find((transaction) => {
       const args = Array.isArray(transaction?.payload?.arguments) ? transaction.payload.arguments : [];
@@ -534,10 +574,11 @@ export async function listCreatorSales(address, searchParams = new URLSearchPara
 }
 
 export function getHealthPayload() {
-  const { registryAddress, nodeUrl, indexerUrl } = getConfig();
+  const { registryAddress, registryModule, nodeUrl, indexerUrl } = getConfig();
   return {
     ok: true,
     registryAddress,
+    registryModule,
     nodeUrl,
     indexerUrl: indexerUrl || null,
   };

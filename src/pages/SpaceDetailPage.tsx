@@ -2,13 +2,20 @@ import { AppHeader } from "../components/layout/AppHeader";
 import { useUploadBlobs } from "@shelby-protocol/react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SpaceFileList } from "../components/spaces/SpaceFileList";
 import { SpacePreview } from "../components/spaces/SpacePreview";
 import { createPaymentReceiptId, hasLocalPayment, mirrorPaymentReceipt, saveLocalPayment, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
 import { resolveSpaceAccess } from "../lib/access/space-access";
 import { getRegistryAccess, type RegistryAccessRecord } from "../lib/discovery/client";
-import { hasRegistryConfig, purchaseSpaceOnChain, updateSpaceManifestOnChain } from "../lib/registry/client";
+import {
+  getPaymentAssetAddress,
+  hasRegistryConfig,
+  isPaymentV2Enabled,
+  purchaseSpaceOnChain,
+  updateSpaceManifestOnChain,
+  updateSpaceTermsOnChain,
+} from "../lib/registry/client";
 import { createShelbyClient } from "../lib/shelby/client";
 import { decodeSpaceManifest, createShareUrl, encodeSpaceManifest } from "../lib/spaces/manifest";
 import { deleteSpace, saveSpace } from "../lib/spaces/local-store";
@@ -20,8 +27,9 @@ import { useSpace } from "../hooks/useSpaces";
 import type { OriaNetwork } from "../types/network";
 import { formatBytes, formatDate, formatDateTime, formatPaymentAmount, shortenAddress } from "../lib/utils/format";
 import { sha256Hex } from "../lib/utils/hash";
+import { fileToUint8Array } from "../lib/utils/files";
 import { useToasts } from "../providers/ToastProvider";
-import type { Space, SpaceVisibility } from "../types/space";
+import type { Space, SpacePaymentCurrency, SpaceVisibility } from "../types/space";
 
 export function SpaceDetailPage() {
   const { spaceId } = useParams();
@@ -44,9 +52,13 @@ export function SpaceDetailPage() {
     title: "",
     description: "",
     visibility: "public" as SpaceVisibility,
+    paymentCurrency: "APT" as SpacePaymentCurrency,
     priceApt: "0.01",
     allowlistText: "",
   });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
   const { notify } = useToasts();
   const hasOnChainRegistry = hasRegistryConfig();
   const shelbyClient = useMemo(
@@ -80,9 +92,11 @@ export function SpaceDetailPage() {
       title: space.title,
       description: space.description,
       visibility: space.visibility,
+      paymentCurrency: space.payment?.currency ?? "APT",
       priceApt: String((space.payment?.priceOctas ?? 1_000_000) / 100_000_000),
       allowlistText: space.access.allowlist?.join("\n") ?? "",
     });
+    setCoverFile(null);
   }, [space]);
 
   useEffect(() => subscribeToPayments(() => setPaymentTick((tick) => tick + 1)), []);
@@ -237,7 +251,52 @@ export function SpaceDetailPage() {
 
       if (!editDraft.title.trim()) throw new Error("Space title cannot be empty.");
       if (editDraft.visibility === "paid" && (!Number.isFinite(priceOctas) || priceOctas <= 0)) {
-        throw new Error("Paid Spaces need a valid APT price.");
+        throw new Error("Paid Spaces need a valid price.");
+      }
+      if (editDraft.paymentCurrency === "SHELBY_USD" && !isPaymentV2Enabled()) {
+        throw new Error("ShelbyUSD edits require registry v2 to be active.");
+      }
+      if (coverFile) {
+        if (!coverFile.type.startsWith("image/")) throw new Error("Cover must be an image file.");
+        if (coverFile.size > 12 * 1024 * 1024) throw new Error("Cover must be 12 MB or smaller.");
+      }
+
+      let nextThumbnail:
+        | {
+            blobName: string;
+            fileName: string;
+            mimeType: string;
+            size: number;
+          }
+        | null = null;
+
+      if (coverFile) {
+        const coverBlobName = `oria/${space.id}/cover-${Date.now()}-${coverFile.name
+          .toLowerCase()
+          .replace(/[^a-z0-9._-]+/g, "-")
+          .replace(/^-+|-+$/g, "")}`;
+
+        await uploadBlobs.mutateAsync({
+          signer: {
+            account: viewer,
+            signAndSubmitTransaction: wallet.signAndSubmitTransaction,
+          },
+          blobs: [
+            {
+              blobName: coverBlobName,
+              blobData: await fileToUint8Array(coverFile),
+            },
+          ],
+          expirationMicros: space.expiresAt * 1000,
+          maxConcurrentUploads: 1,
+        });
+
+        nextThumbnail = {
+          blobName: coverBlobName,
+          fileName: coverFile.name,
+          mimeType: coverFile.type || "image/*",
+          size: coverFile.size,
+        };
       }
 
       const nextDraft: Space = {
@@ -245,6 +304,11 @@ export function SpaceDetailPage() {
         title: editDraft.title.trim(),
         description: editDraft.description.trim(),
         visibility: editDraft.visibility,
+        thumbnailBlobName: nextThumbnail?.blobName ?? space.thumbnailBlobName,
+        thumbnailFileName: nextThumbnail?.fileName ?? space.thumbnailFileName,
+        thumbnailMimeType: nextThumbnail?.mimeType ?? space.thumbnailMimeType,
+        thumbnailSize: nextThumbnail?.size ?? space.thumbnailSize,
+        thumbnailIsPublic: nextThumbnail ? true : space.thumbnailIsPublic,
         access:
           editDraft.visibility === "paid"
             ? { rule: "paid" }
@@ -253,7 +317,12 @@ export function SpaceDetailPage() {
               : { rule: "public" },
         payment:
           editDraft.visibility === "paid"
-            ? { currency: "APT", priceOctas, recipient: space.creator }
+            ? {
+                currency: editDraft.paymentCurrency,
+                priceOctas,
+                recipient: space.creator,
+                assetMetadataAddress: getPaymentAssetAddress(editDraft.paymentCurrency),
+              }
             : undefined,
         manifestHash: undefined,
         manifestVersion: space.manifestVersion + 1,
@@ -292,13 +361,18 @@ export function SpaceDetailPage() {
         });
       }
 
-      const registryTxHash =
-        (await updateSpaceManifestOnChain({
-          space: nextSpace,
-          signAndSubmitTransaction: wallet.signAndSubmitTransaction,
-        })) ?? nextSpace.registryTxHash;
+      const termsTxHash = await updateSpaceTermsOnChain({
+        space: nextSpace,
+        signAndSubmitTransaction: wallet.signAndSubmitTransaction,
+      });
+      const manifestTxHash = await updateSpaceManifestOnChain({
+        space: nextSpace,
+        signAndSubmitTransaction: wallet.signAndSubmitTransaction,
+      });
+      const registryTxHash = manifestTxHash ?? termsTxHash ?? nextSpace.registryTxHash;
 
       saveSpace({ ...nextSpace, registryTxHash });
+      setCoverFile(null);
       setIsEditing(false);
       notify({
         tone: "success",
@@ -434,16 +508,33 @@ export function SpaceDetailPage() {
                     />
                   </label>
                   {editDraft.visibility === "paid" && (
-                    <label>
-                      <span>Price in APT</span>
-                      <input
-                        min="0.000001"
-                        step="0.000001"
-                        type="number"
-                        value={editDraft.priceApt}
-                        onChange={(event) => setEditDraft((draft) => ({ ...draft, priceApt: event.target.value }))}
-                      />
-                    </label>
+                    <>
+                      <label>
+                        <span>Payment asset</span>
+                        <select
+                          value={editDraft.paymentCurrency}
+                          onChange={(event) =>
+                            setEditDraft((draft) => ({
+                              ...draft,
+                              paymentCurrency: event.target.value as SpacePaymentCurrency,
+                            }))
+                          }
+                        >
+                          <option value="APT">APT</option>
+                          <option value="SHELBY_USD">ShelbyUSD</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Price in {editDraft.paymentCurrency === "SHELBY_USD" ? "ShelbyUSD" : "APT"}</span>
+                        <input
+                          min="0.000001"
+                          step="0.000001"
+                          type="number"
+                          value={editDraft.priceApt}
+                          onChange={(event) => setEditDraft((draft) => ({ ...draft, priceApt: event.target.value }))}
+                        />
+                      </label>
+                    </>
                   )}
                   {editDraft.visibility === "wallet_gated" && (
                     <label className="wide">
@@ -455,6 +546,60 @@ export function SpaceDetailPage() {
                       />
                     </label>
                   )}
+                  <div className="wide edit-cover-panel">
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        setCoverError(null);
+
+                        if (!file) {
+                          setCoverFile(null);
+                          return;
+                        }
+
+                        if (!file.type.startsWith("image/")) {
+                          setCoverError("Choose an image file for the Space cover.");
+                          return;
+                        }
+
+                        if (file.size > 12 * 1024 * 1024) {
+                          setCoverError("Cover must be 12 MB or smaller.");
+                          return;
+                        }
+
+                        setCoverFile(file);
+                      }}
+                    />
+                    <div>
+                      <span className="tiny-label">Cover image</span>
+                      <strong>{coverFile ? coverFile.name : space.thumbnailFileName || "Current cover"}</strong>
+                      <p>
+                        Replace the public cover shown in Discover. Paid and wallet-gated Spaces can use
+                        this without exposing private files.
+                      </p>
+                    </div>
+                    <div className="edit-cover-actions">
+                      <button className="button secondary" type="button" onClick={() => coverInputRef.current?.click()}>
+                        {coverFile ? "Change cover" : "Upload cover"}
+                      </button>
+                      {coverFile && (
+                        <button
+                          className="button secondary"
+                          type="button"
+                          onClick={() => {
+                            setCoverFile(null);
+                            if (coverInputRef.current) coverInputRef.current.value = "";
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {coverError && <p className="dropzone-validation">{coverError}</p>}
+                  </div>
                 </div>
                 {editError && <p className="form-error">{editError}</p>}
                 <div className="form-actions">
