@@ -1,6 +1,5 @@
 const defaultNodeUrl = "https://api.shelbynet.shelby.xyz/v1";
 const cache = new Map();
-const registryCacheKey = "registry";
 const registryTtlMs = 15_000;
 const recordTtlMs = 30_000;
 const txLookupTtlMs = 5 * 60_000;
@@ -23,9 +22,9 @@ function setCached(key, value, ttlMs) {
   return value;
 }
 
-export function getConfig() {
+export function getConfig(moduleOverride) {
   const registryAddress = process.env.ORIA_REGISTRY_ADDRESS || process.env.VITE_ORIA_REGISTRY_ADDRESS;
-  const registryModule = process.env.ORIA_REGISTRY_MODULE || process.env.VITE_ORIA_REGISTRY_MODULE || "space_registry";
+  const registryModule = moduleOverride || process.env.ORIA_REGISTRY_MODULE || process.env.VITE_ORIA_REGISTRY_MODULE || "space_registry";
   const nodeUrl = process.env.APTOS_NODE_URL || process.env.VITE_APTOS_NODE_URL || defaultNodeUrl;
   const indexerUrl = process.env.APTOS_INDEXER_URL || process.env.VITE_APTOS_INDEXER_URL;
 
@@ -238,15 +237,16 @@ export async function aptos(path, init) {
   return response.json();
 }
 
-async function getRegistry() {
-  const { registryAddress, registryType } = getConfig();
-  const cached = getCached(registryCacheKey);
+async function getRegistry(moduleOverride) {
+  const { registryAddress, registryType, registryModule } = getConfig(moduleOverride);
+  const cacheKey = `registry:${registryModule}`;
+  const cached = getCached(cacheKey);
   if (cached) return cached;
 
   const resource = await aptos(
     `/accounts/${registryAddress}/resource/${encodeURIComponent(registryType)}`,
   );
-  return setCached(registryCacheKey, resource.data, registryTtlMs);
+  return setCached(cacheKey, resource.data, registryTtlMs);
 }
 
 async function getTableItem(handle, keyType, valueType, key) {
@@ -264,9 +264,10 @@ function tableHandle(table) {
   return typeof table === "object" && table ? table.handle : undefined;
 }
 
-function normalizeRecord(record) {
+function normalizeRecord(record, registryModule) {
   return {
     spaceId: record.space_id,
+    registryModule,
     creator: record.creator,
     network: record.network,
     manifestBlobName: record.manifest_blob_name,
@@ -289,18 +290,18 @@ function parsePagination(searchParams) {
   return { limit, offset };
 }
 
-async function getRecordFromTable(handle, spaceRecordType, spaceId) {
-  const cacheKey = `space:${spaceId}`;
+async function getRecordFromTable(handle, spaceRecordType, spaceId, registryModule) {
+  const cacheKey = `space:${registryModule}:${spaceId}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
   const record = await getTableItem(handle, "0x1::string::String", spaceRecordType, spaceId);
-  return setCached(cacheKey, normalizeRecord(record), recordTtlMs);
+  return setCached(cacheKey, normalizeRecord(record, registryModule), recordTtlMs);
 }
 
-export async function listRecordsPage(searchParams) {
-  const { spaceRecordType } = getConfig();
-  const registry = await getRegistry();
+async function listRecordsPageForModule(searchParams, moduleOverride) {
+  const { spaceRecordType, registryModule } = getConfig(moduleOverride);
+  const registry = await getRegistry(registryModule);
   const handle = tableHandle(registry.spaces);
   const ids = Array.isArray(registry.space_ids) ? registry.space_ids : [];
   const q = searchParams.get("q")?.toLowerCase();
@@ -312,7 +313,7 @@ export async function listRecordsPage(searchParams) {
   const sortedIds = [...ids].reverse();
   const idsToFetch = needsFullScan ? sortedIds : sortedIds.slice(offset, offset + limit);
   const normalized = await Promise.all(
-    idsToFetch.map((spaceId) => getRecordFromTable(handle, spaceRecordType, spaceId)),
+    idsToFetch.map((spaceId) => getRecordFromTable(handle, spaceRecordType, spaceId, registryModule)),
   );
 
   const filtered = normalized
@@ -345,20 +346,77 @@ export async function listRecordsPage(searchParams) {
   };
 }
 
+function getLegacyRegistryModule() {
+  const configured =
+    process.env.ORIA_LEGACY_REGISTRY_MODULE || process.env.VITE_ORIA_LEGACY_REGISTRY_MODULE || "";
+  const primary = getConfig().registryModule;
+
+  if (!configured || configured === primary) return null;
+  return configured;
+}
+
+export async function listRecordsPage(searchParams) {
+  const primaryPage = await listRecordsPageForModule(searchParams);
+  const legacyModule = getLegacyRegistryModule();
+  if (!legacyModule) return primaryPage;
+
+  try {
+    const legacyQuery = new URLSearchParams(searchParams);
+    legacyQuery.set("offset", "0");
+    legacyQuery.set("limit", String(Math.max(primaryPage.pagination.limit, 100)));
+    const legacyPage = await listRecordsPageForModule(legacyQuery, legacyModule);
+    const merged = new Map();
+
+    for (const record of legacyPage.records) merged.set(record.spaceId, record);
+    for (const record of primaryPage.records) merged.set(record.spaceId, record);
+
+    const records = Array.from(merged.values()).sort((a, b) => b.createdAtMicros - a.createdAtMicros);
+    const { limit, offset } = primaryPage.pagination;
+    const pageRecords = records.slice(offset, offset + limit);
+
+    return {
+      records: pageRecords,
+      pagination: {
+        limit,
+        offset,
+        count: pageRecords.length,
+        total: records.length,
+        hasMore: offset + pageRecords.length < records.length,
+      },
+      cache: {
+        ttlMs: recordTtlMs,
+        mode: "primary-with-legacy-fallback",
+      },
+    };
+  } catch {
+    return primaryPage;
+  }
+}
+
 export async function listRecords(searchParams) {
   const page = await listRecordsPage(searchParams);
   return page.records;
 }
 
-export async function getRecord(spaceId) {
-  const { spaceRecordType } = getConfig();
-  const registry = await getRegistry();
+async function getRecordForModule(spaceId, moduleOverride) {
+  const { spaceRecordType, registryModule } = getConfig(moduleOverride);
+  const registry = await getRegistry(registryModule);
   const handle = tableHandle(registry.spaces);
-  return getRecordFromTable(handle, spaceRecordType, spaceId);
+  return getRecordFromTable(handle, spaceRecordType, spaceId, registryModule);
 }
 
-export async function getAccess(spaceId, wallet) {
-  const registry = await getRegistry();
+export async function getRecord(spaceId) {
+  try {
+    return await getRecordForModule(spaceId);
+  } catch (error) {
+    const legacyModule = getLegacyRegistryModule();
+    if (!legacyModule) throw error;
+    return getRecordForModule(spaceId, legacyModule);
+  }
+}
+
+async function getAccessForModule(spaceId, wallet, moduleOverride) {
+  const registry = await getRegistry(moduleOverride);
   const purchasesHandle = tableHandle(registry.purchases);
   const allowlistsHandle = tableHandle(registry.allowlists);
   let purchases = [];
@@ -393,6 +451,24 @@ export async function getAccess(spaceId, wallet) {
   };
 }
 
+export async function getAccess(spaceId, wallet) {
+  const primaryAccess = await getAccessForModule(spaceId, wallet);
+  if (primaryAccess.hasPurchased || primaryAccess.isAllowlisted) return primaryAccess;
+
+  const legacyModule = getLegacyRegistryModule();
+  if (!legacyModule) return primaryAccess;
+
+  try {
+    const legacyAccess = await getAccessForModule(spaceId, wallet, legacyModule);
+    return {
+      hasPurchased: primaryAccess.hasPurchased || legacyAccess.hasPurchased,
+      isAllowlisted: primaryAccess.isAllowlisted || legacyAccess.isAllowlisted,
+    };
+  } catch {
+    return primaryAccess;
+  }
+}
+
 function normalizeProfile(profile, fallbackAddress) {
   if (!profile) return null;
   const updatedAtMicros = Number(profile.updated_at_micros || profile.updatedAtMicros || 0);
@@ -413,7 +489,7 @@ function normalizeProfile(profile, fallbackAddress) {
 
 export async function getCreatorProfile(address) {
   const { registryAddress, registryModule } = getConfig();
-  const registry = await getRegistry();
+  const registry = await getRegistry(registryModule);
   const creatorProfilesHandle = tableHandle(registry.creator_profiles);
   if (!creatorProfilesHandle) return null;
 
@@ -431,8 +507,8 @@ export async function getCreatorProfile(address) {
   }
 }
 
-async function getPurchasesForSpace(spaceId) {
-  const registry = await getRegistry();
+async function getPurchasesForSpace(spaceId, moduleOverride) {
+  const registry = await getRegistry(moduleOverride);
   const purchasesHandle = tableHandle(registry.purchases);
 
   try {
@@ -462,10 +538,10 @@ function payloadFunctionName(transaction) {
 }
 
 async function findPurchaseTransaction(params) {
-  const { registryAddress, registryModule } = getConfig();
+  const { registryAddress, registryModule } = getConfig(params.registryModule);
   const buyer = String(params.buyer || "").toLowerCase();
   const spaceId = String(params.spaceId || "");
-  const cacheKey = `purchase-tx:${buyer}:${spaceId}`;
+  const cacheKey = `purchase-tx:${registryModule}:${buyer}:${spaceId}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
@@ -510,25 +586,27 @@ export async function listCreatorSales(address, searchParams = new URLSearchPara
   const paidSpaces = spaces.filter((space) => Number(space.priceOctas) > 0 || Number(space.visibility) === 2);
   const salesBySpace = await Promise.all(
     paidSpaces.map(async (space) => {
-      const buyers = await getPurchasesForSpace(space.spaceId);
+      const buyers = await getPurchasesForSpace(space.spaceId, space.registryModule);
 
       return {
         spaceId: space.spaceId,
+        registryModule: space.registryModule,
         creator: space.creator,
         network: space.network,
         manifestBlobName: space.manifestBlobName,
         priceOctas: space.priceOctas,
         buyerCount: buyers.length,
         buyers,
-      estimatedRevenueOctas: buyers.length * Number(space.priceOctas || 0),
-      currency: space.paymentCurrency || "APT",
-      updatedAtMicros: space.updatedAtMicros,
+        estimatedRevenueOctas: buyers.length * Number(space.priceOctas || 0),
+        currency: space.paymentCurrency || "APT",
+        updatedAtMicros: space.updatedAtMicros,
       };
     }),
   );
   const sales = salesBySpace.flatMap((space) =>
     space.buyers.map((buyer) => ({
       spaceId: space.spaceId,
+      registryModule: space.registryModule,
       creator: space.creator,
       network: space.network,
       manifestBlobName: space.manifestBlobName,
@@ -545,6 +623,7 @@ export async function listCreatorSales(address, searchParams = new URLSearchPara
           const purchaseTx = await findPurchaseTransaction({
             buyer: sale.buyer,
             spaceId: sale.spaceId,
+            registryModule: sale.registryModule,
           });
 
           return purchaseTx

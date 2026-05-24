@@ -2,6 +2,7 @@ import type { OriaNetwork } from "../../types/network";
 
 export type RegistrySpaceRecord = {
   spaceId: string;
+  registryModule?: string;
   creator: string;
   network: OriaNetwork;
   manifestBlobName: string;
