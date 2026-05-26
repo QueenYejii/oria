@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useActiveNetwork } from "./useActiveNetwork";
 import { createShelbyClient } from "../lib/shelby/client";
 import { encodeSpaceManifest } from "../lib/spaces/manifest";
-import { getPaymentAssetAddress, registerSpaceOnChain } from "../lib/registry/client";
+import { getPaymentAssetAddress, getRegistryModuleName, registerSpaceOnChain } from "../lib/registry/client";
 import { saveSpace } from "../lib/spaces/local-store";
 import { clearUploadSession, saveUploadSession } from "../lib/upload/session-store";
 import { getAccountAddress } from "../lib/wallet/address";
@@ -296,6 +296,7 @@ export function useCreateSpace() {
       const manifestBlobName = `oria/${spaceId}/manifest.json`;
       const spaceDraft: Space = {
         id: spaceId,
+        registryModule: getRegistryModuleName(),
         network: activeNetwork,
         creator,
         title: input.title.trim(),

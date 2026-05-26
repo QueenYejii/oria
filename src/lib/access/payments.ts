@@ -4,6 +4,7 @@ import { getDiscoveryApiUrl } from "../discovery/client";
 
 export type LocalPaymentRecord = {
   spaceId: string;
+  registryModule?: string;
   network: OriaNetwork;
   payer: string;
   txHash: string;

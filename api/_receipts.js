@@ -42,7 +42,8 @@ async function getTransactionByHash(txHash) {
 }
 
 function assertReceiptTransaction(receipt, transaction, spaceRecord) {
-  const { registryAddress, registryModule } = getConfig();
+  const { registryAddress, registryModule: defaultRegistryModule } = getConfig();
+  const registryModule = receipt.registryModule || spaceRecord?.registryModule || defaultRegistryModule;
   const payload = transaction?.payload || {};
   const expectedFunction =
     receipt.currency === "SHELBY_USD"
@@ -91,6 +92,7 @@ async function verifyReceipt(input) {
 
   return {
     ...receipt,
+    registryModule: receipt.registryModule || spaceRecord?.registryModule,
     amountOctas: Number(spaceRecord?.priceOctas || receipt.amountOctas || 0),
     creator: spaceRecord?.creator || receipt.creator,
     network: spaceRecord?.network || receipt.network,
@@ -124,6 +126,7 @@ function normalizeReceipt(input) {
     spaceTitle: String(receipt.spaceTitle || "Paid Space"),
     paidAt: Number(receipt.paidAt || Date.now()),
     source: "receipt_mirror",
+    registryModule: receipt.registryModule ? String(receipt.registryModule) : undefined,
     chainStatus: String(receipt.chainStatus || "pending"),
     createdAt: Date.now(),
   };

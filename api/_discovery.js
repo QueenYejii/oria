@@ -546,7 +546,9 @@ async function findPurchaseTransaction(params) {
   if (cached) return cached;
 
   try {
-    const expectedFunction = `${canonicalAddress(registryAddress)}::${registryModule}::purchase_space`;
+    const purchaseFunction =
+      params.currency === "SHELBY_USD" ? "purchase_space_shelby_usd" : "purchase_space";
+    const expectedFunction = `${canonicalAddress(registryAddress)}::${registryModule}::${purchaseFunction}`;
     const transactions = await getAccountTransactions(buyer, 75);
     const match = (transactions || []).find((transaction) => {
       const args = Array.isArray(transaction?.payload?.arguments) ? transaction.payload.arguments : [];
@@ -624,6 +626,7 @@ export async function listCreatorSales(address, searchParams = new URLSearchPara
             buyer: sale.buyer,
             spaceId: sale.spaceId,
             registryModule: sale.registryModule,
+            currency: sale.currency,
           });
 
           return purchaseTx
@@ -677,7 +680,8 @@ function normalizePaymentEvent(event) {
     txHash,
     paidAt,
     amountOctas: Number(data.price_octas || 0),
-    currency: "APT",
+    currency: Number(data.payment_currency || 0) === 1 ? "SHELBY_USD" : "APT",
+    registryModule: getConfig().registryModule,
     creator: data.creator,
     receiptId: `oria-${network}-${String(data.space_id || "").slice(-8)}-${String(txHash).slice(-8)}`,
     source: "registry",

@@ -19,6 +19,14 @@ export function getRegistryModuleName() {
   return (import.meta.env.VITE_ORIA_REGISTRY_MODULE as string | undefined) || "space_registry";
 }
 
+function getSpaceRegistryModule(space?: Pick<Space, "registryModule">) {
+  return space?.registryModule || getRegistryModuleName();
+}
+
+function usesPaymentV2(moduleName: string) {
+  return paymentV2Enabled && moduleName !== "space_registry";
+}
+
 export function hasRegistryConfig() {
   return Boolean(getRegistryAddress());
 }
@@ -54,6 +62,8 @@ export async function registerSpaceOnChain(params: {
 }) {
   const registryAddress = getRegistryAddress();
   if (!registryAddress) return null;
+  const registryModule = getSpaceRegistryModule(params.space);
+  const isV2 = usesPaymentV2(registryModule);
   const baseArguments = [
     registryAddress,
     params.space.id,
@@ -68,8 +78,8 @@ export async function registerSpaceOnChain(params: {
 
   const response = await params.signAndSubmitTransaction({
     data: {
-      function: `${registryAddress}::${getRegistryModuleName()}::register_space`,
-      functionArguments: paymentV2Enabled
+      function: `${registryAddress}::${registryModule}::register_space`,
+      functionArguments: isV2
         ? [
             ...baseArguments,
             currencyToCode(params.space.payment?.currency),
@@ -88,11 +98,12 @@ export async function updateSpaceTermsOnChain(params: {
   signAndSubmitTransaction: SignAndSubmitTransaction;
 }) {
   const registryAddress = getRegistryAddress();
-  if (!registryAddress || !paymentV2Enabled) return null;
+  const registryModule = getSpaceRegistryModule(params.space);
+  if (!registryAddress || !usesPaymentV2(registryModule)) return null;
 
   const response = await params.signAndSubmitTransaction({
     data: {
-      function: `${registryAddress}::${getRegistryModuleName()}::update_space_terms`,
+      function: `${registryAddress}::${registryModule}::update_space_terms`,
       functionArguments: [
         registryAddress,
         params.space.id,
@@ -115,6 +126,7 @@ export async function purchaseSpaceOnChain(params: {
 }) {
   const registryAddress = getRegistryAddress();
   const currency = params.space.payment?.currency ?? "APT";
+  const registryModule = getSpaceRegistryModule(params.space);
   if (!registryAddress) {
     if (currency !== "APT") {
       throw new Error("ShelbyUSD unlocks require the Oria payment registry contract.");
@@ -133,13 +145,13 @@ export async function purchaseSpaceOnChain(params: {
 
   if (currency === "SHELBY_USD") {
     const metadataAddress = params.space.payment?.assetMetadataAddress || shelbyUsdMetadata;
-    if (!paymentV2Enabled || !metadataAddress) {
+    if (!usesPaymentV2(registryModule) || !metadataAddress) {
       throw new Error("ShelbyUSD payments require VITE_ORIA_PAYMENT_V2=1 and VITE_SHELBY_USD_METADATA_ADDRESS.");
     }
 
     const response = await params.signAndSubmitTransaction({
       data: {
-        function: `${registryAddress}::${getRegistryModuleName()}::purchase_space_shelby_usd`,
+        function: `${registryAddress}::${registryModule}::purchase_space_shelby_usd`,
         functionArguments: [registryAddress, params.space.id, metadataAddress],
       },
     });
@@ -149,7 +161,7 @@ export async function purchaseSpaceOnChain(params: {
 
   const response = await params.signAndSubmitTransaction({
     data: {
-      function: `${registryAddress}::${getRegistryModuleName()}::purchase_space`,
+      function: `${registryAddress}::${registryModule}::purchase_space`,
       functionArguments: [registryAddress, params.space.id],
     },
   });
@@ -163,10 +175,11 @@ export async function updateSpaceManifestOnChain(params: {
 }) {
   const registryAddress = getRegistryAddress();
   if (!registryAddress || !params.space.manifestBlobName || !params.space.manifestHash) return null;
+  const registryModule = getSpaceRegistryModule(params.space);
 
   const response = await params.signAndSubmitTransaction({
     data: {
-      function: `${registryAddress}::${getRegistryModuleName()}::update_manifest`,
+      function: `${registryAddress}::${registryModule}::update_manifest`,
       functionArguments: [
         registryAddress,
         params.space.id,

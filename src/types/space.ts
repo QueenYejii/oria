@@ -33,6 +33,7 @@ export type SpaceAccess = {
 
 export type Space = {
   id: string;
+  registryModule?: string;
   network: OriaNetwork;
   creator: string;
   title: string;

@@ -45,6 +45,9 @@ export function createShareUrl(space: Space) {
     url.searchParams.set("manifest", space.manifestBlobName);
     url.searchParams.set("creator", space.creator);
     url.searchParams.set("network", space.network);
+    if (space.registryModule) {
+      url.searchParams.set("registryModule", space.registryModule);
+    }
   }
 
   return url.toString();

@@ -128,6 +128,7 @@ export function SpaceDetailPage() {
     const manifestBlobName = searchParams.get("manifest");
     const creator = searchParams.get("creator");
     const network = searchParams.get("network") as OriaNetwork | null;
+    const registryModule = searchParams.get("registryModule") || undefined;
 
     if (!manifestBlobName || !creator || (network !== "testnet" && network !== "shelbynet")) {
       return;
@@ -150,7 +151,7 @@ export function SpaceDetailPage() {
         const importedSpace = await decodeSpaceManifest(manifestBlob.readable);
 
         if (!cancelled) {
-          saveSpace(importedSpace);
+          saveSpace({ ...importedSpace, registryModule: importedSpace.registryModule || registryModule });
         }
       } catch (caught) {
         if (!cancelled) {
@@ -180,6 +181,7 @@ export function SpaceDetailPage() {
 
       const receipt: LocalPaymentRecord = {
         spaceId: space.id,
+        registryModule: space.registryModule,
         network: space.network,
         payer: viewer,
         txHash,

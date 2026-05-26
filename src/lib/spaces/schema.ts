@@ -29,6 +29,7 @@ export const spaceManifestVersionSchema = z.object({
 
 export const spaceSchema = z.object({
   id: z.string().min(1),
+  registryModule: z.string().optional(),
   network: z.enum(["testnet", "shelbynet"]),
   creator: z.string().min(1),
   title: z.string().min(1),

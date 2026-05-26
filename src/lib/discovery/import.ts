@@ -23,6 +23,7 @@ export async function importRegistryRecord(record: RegistrySpaceRecord): Promise
   const importedSpace: Space = {
     ...manifestSpace,
     id: record.spaceId,
+    registryModule: record.registryModule,
     network: record.network,
     creator: record.creator,
     manifestBlobName: record.manifestBlobName,
