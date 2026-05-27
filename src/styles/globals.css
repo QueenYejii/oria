@@ -4170,6 +4170,229 @@ h1 {
   }
 }
 
+@media (min-width: 921px) {
+  .collection-page,
+  .detail-page {
+    width: min(1420px, calc(100% - (var(--page-gutter) * 1.65)));
+    padding-block: clamp(3.2rem, 5vw, 5.4rem);
+  }
+
+  .collection-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 0.76fr) minmax(22rem, 0.54fr);
+    column-gap: clamp(2rem, 5vw, 5.5rem);
+    row-gap: 0.55rem;
+    align-items: end;
+    margin-bottom: 1.55rem;
+  }
+
+  .collection-heading .eyebrow {
+    grid-column: 1;
+  }
+
+  .collection-heading h1 {
+    grid-column: 1;
+    max-width: 12ch;
+    font-size: clamp(3.2rem, 4.4vw, 5.45rem);
+    letter-spacing: 0;
+  }
+
+  .collection-heading p {
+    grid-column: 2;
+    grid-row: 2;
+    max-width: 40rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .sales-page,
+  .payment-page,
+  .creator-page {
+    display: block;
+  }
+
+  .sales-page .collection-heading,
+  .payment-page .collection-heading,
+  .creator-page .creator-hero {
+    position: static;
+    top: auto;
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 0;
+  }
+
+  .sales-page .collection-heading,
+  .payment-page .collection-heading {
+    margin-bottom: 1.4rem;
+  }
+
+  .sales-page .collection-heading .eyebrow,
+  .sales-page .collection-heading h1,
+  .sales-page .collection-heading p,
+  .payment-page .collection-heading .eyebrow,
+  .payment-page .collection-heading h1,
+  .payment-page .collection-heading p {
+    grid-row: auto;
+  }
+
+  .sales-page .collection-heading h1,
+  .payment-page .collection-heading h1 {
+    max-width: 11ch;
+    font-size: clamp(3.2rem, 4.4vw, 5.45rem);
+  }
+
+  .sales-page .market-stats,
+  .sales-page .payment-state-card,
+  .sales-page .sync-state-card,
+  .sales-page .sales-controls,
+  .sales-page .space-revenue-panel,
+  .sales-page .payment-list,
+  .sales-page .empty-state,
+  .payment-page .market-stats,
+  .payment-page .receipt-command-panel,
+  .payment-page .sync-state-card,
+  .payment-page .payment-state-card,
+  .payment-page .payment-section-heading,
+  .payment-page .payment-list,
+  .payment-page .empty-state,
+  .creator-page .creator-showcase,
+  .creator-page .creator-stats,
+  .creator-page .creator-space-heading,
+  .creator-page .space-list,
+  .creator-page .empty-state,
+  .creator-page .creator-editor-panel {
+    grid-column: auto;
+  }
+
+  .market-stats,
+  .creator-stats {
+    gap: 0.9rem;
+  }
+
+  .market-stats article,
+  .creator-stats article {
+    min-height: 6.15rem;
+    padding: 1rem 1.1rem;
+  }
+
+  .sales-page .market-stats strong,
+  .payment-page .market-stats strong {
+    font-size: clamp(1.55rem, 2.1vw, 2.75rem);
+    line-height: 1.02;
+  }
+
+  .sales-page .payment-state-card,
+  .payment-page .receipt-command-panel,
+  .payment-page .payment-state-card {
+    margin-bottom: 1rem;
+  }
+
+  .payment-section-heading,
+  .creator-space-heading {
+    margin: 1.85rem 0 1rem;
+  }
+
+  .space-revenue-panel .section-label {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .space-revenue-panel .section-label h2 {
+    max-width: 14ch;
+    font-size: clamp(2.2rem, 3.6vw, 4.4rem);
+    text-align: right;
+  }
+
+  .receipt-command-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) auto;
+    align-items: stretch;
+  }
+
+  .payment-row {
+    min-height: 6.4rem;
+    padding: 1.05rem 1.2rem;
+  }
+
+  .creator-page .creator-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: clamp(1rem, 2.5vw, 2rem);
+    margin-bottom: 1.35rem;
+  }
+
+  .creator-page .creator-identity {
+    grid-template-columns: auto minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .creator-page .creator-avatar {
+    width: clamp(5.25rem, 7vw, 7.25rem);
+    height: clamp(5.25rem, 7vw, 7.25rem);
+  }
+
+  .creator-bio {
+    min-width: 0;
+  }
+
+  .creator-page .creator-hero h1 {
+    max-width: min(100%, 13ch);
+    font-size: clamp(3.05rem, 4.9vw, 6rem);
+    overflow-wrap: anywhere;
+  }
+
+  .creator-address-row {
+    width: min(100%, 42rem);
+    max-width: 100%;
+  }
+
+  .creator-page .creator-actions {
+    justify-content: flex-end;
+    align-content: center;
+  }
+
+  .creator-page .creator-actions .button {
+    flex: 0 1 auto;
+  }
+
+  .creator-showcase {
+    grid-template-columns: minmax(0, 1.1fr) repeat(2, minmax(220px, 0.72fr));
+    margin-bottom: 1rem;
+  }
+
+  .creator-showcase article {
+    min-height: 9rem;
+  }
+
+  .creator-stats {
+    margin-bottom: 0.9rem;
+  }
+
+  .creator-space-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .creator-space-heading h2 {
+    font-size: clamp(2.5rem, 3.8vw, 4.8rem);
+  }
+
+  .marketplace-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+
+  .space-card {
+    min-height: 20rem;
+  }
+
+  .space-card-art,
+  .space-card-art img {
+    min-height: 10rem;
+  }
+}
+
 @media (hover: hover) {
   .stage-shell,
   .feature-panel,
