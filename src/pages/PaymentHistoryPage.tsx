@@ -20,6 +20,10 @@ function amountLabel(record: LocalPaymentRecord) {
     : "Verified";
 }
 
+function fallbackSpaceLabel(spaceId: string) {
+  return `Space ${spaceId.replace(/^space_/, "").slice(0, 8)}`;
+}
+
 function volumeLabel(records: Array<{ amountOctas?: number; currency?: string; spaceId: string }>) {
   const byCurrency = new Map<string, number>();
 
@@ -250,7 +254,7 @@ export function PaymentHistoryPage() {
         {sales.length > 0 ? (
           <section className="payment-list">
             {sales.map((sale, index) => {
-              const title = sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Indexed paid Space";
+              const title = sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || fallbackSpaceLabel(sale.spaceId);
 
               return (
                 <article key={`${sale.spaceId}-${sale.buyer}-${index}`} className="payment-row premium sale-row receipt-ledger-row">
@@ -295,7 +299,7 @@ export function PaymentHistoryPage() {
           <section className="payment-list">
             {records.map((record) => {
               const space = getSpace(record.spaceId);
-              const title = record.spaceTitle ?? space?.title ?? "Verified paid unlock";
+              const title = record.spaceTitle ?? space?.title ?? fallbackSpaceLabel(record.spaceId);
 
               return (
                 <article key={`${record.spaceId}-${record.payer}-${record.txHash}`} className="payment-row premium receipt-ledger-row">

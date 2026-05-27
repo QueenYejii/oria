@@ -16,6 +16,10 @@ function saleTimestamp(sale: CreatorSaleRecord) {
   return 0;
 }
 
+function fallbackSpaceLabel(spaceId: string) {
+  return `Space ${spaceId.replace(/^space_/, "").slice(0, 8)}`;
+}
+
 export function SalesPage() {
   const wallet = useWallet();
   const address = getAccountAddress(wallet.account);
@@ -65,7 +69,7 @@ export function SalesPage() {
     return titles;
   }, [spaces]);
   const resolveSpaceTitle = (sale: CreatorSaleRecord) =>
-    sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Indexed paid Space";
+    sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || fallbackSpaceLabel(sale.spaceId);
   const revenueLabel = useMemo(() => {
     const byCurrency = new Map<string, number>();
     for (const sale of sales) {
@@ -150,7 +154,7 @@ export function SalesPage() {
 
         return [
           sale.spaceId,
-          sale.spaceTitle ?? spaceTitleById.get(sale.spaceId) ?? space?.title ?? "Indexed paid Space",
+          sale.spaceTitle ?? spaceTitleById.get(sale.spaceId) ?? space?.title ?? fallbackSpaceLabel(sale.spaceId),
           sale.buyer,
           String(sale.amountOctas / 100_000_000),
           sale.currency ?? "APT",

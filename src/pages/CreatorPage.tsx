@@ -341,7 +341,7 @@ export function CreatorPage() {
           </article>
           <article>
             <span>Last update</span>
-            <strong>{latestUpdate ? new Date(latestUpdate).toLocaleDateString() : "No updates yet"}</strong>
+            <strong>{latestUpdate ? formatDate(latestUpdate) : "No updates yet"}</strong>
           </article>
         </section>
 
