@@ -165,7 +165,7 @@ export function CreateSpacePage() {
           <p className="eyebrow">Create Space</p>
           <h1>Publish a Shelby-backed release.</h1>
           <p>
-            Compose metadata, connect your Aptos wallet, and publish blobs to {networkConfig.label}.
+            Prepare metadata, choose access, and publish Shelby blobs through your Aptos wallet on {networkConfig.label}.
           </p>
 
           <div className="status-panel">
@@ -198,7 +198,7 @@ export function CreateSpacePage() {
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Studio Dispatch"
+              placeholder="Creator release, collection pack, or research archive"
             />
           </label>
 
@@ -207,7 +207,7 @@ export function CreateSpacePage() {
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="What is inside this release?"
+              placeholder="Describe what buyers or visitors will find inside this Space."
               rows={4}
             />
           </label>

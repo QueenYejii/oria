@@ -253,7 +253,7 @@ export function SpaceDetailPage() {
 
       if (!editDraft.title.trim()) throw new Error("Space title cannot be empty.");
       if (editDraft.visibility === "paid" && (!Number.isFinite(priceOctas) || priceOctas <= 0)) {
-        throw new Error("Paid Spaces need a valid price.");
+        throw new Error("Enter a price greater than zero before saving a paid Space.");
       }
       if (editDraft.paymentCurrency === "SHELBY_USD" && !isPaymentV2Enabled()) {
         throw new Error("ShelbyUSD edits require registry v2 to be active.");
@@ -392,11 +392,13 @@ export function SpaceDetailPage() {
 
   const removeSpace = () => {
     if (!space || !isOwner) return;
-    const confirmed = window.confirm("Remove this Space from local Oria metadata? Shelby blobs and on-chain records will not be deleted.");
+    const confirmed = window.confirm(
+      "Remove this Space from this browser? Shelby blobs and on-chain records will stay intact.",
+    );
     if (!confirmed) return;
 
     deleteSpace(space.id);
-    notify({ tone: "info", title: "Space removed", message: "Local metadata was removed from this browser." });
+    notify({ tone: "info", title: "Space removed", message: "This browser no longer lists the Space." });
   };
 
   void paymentTick;
@@ -415,7 +417,7 @@ export function SpaceDetailPage() {
                   <span className="network-badge stable">{space.visibility.replace("_", " ")}</span>
                 </div>
                 <h1>{space.title}</h1>
-                <p>{space.description || "No description added."}</p>
+                <p>{space.description || "Creator has not added a description yet."}</p>
                 <div className="detail-summary-grid" aria-label="Space summary">
                   <article>
                     <span>Files</span>
@@ -433,7 +435,7 @@ export function SpaceDetailPage() {
                 <div className="detail-trust-strip" aria-label="Storage and registry status">
                   <span>On-chain registry</span>
                   <span>Shelby blobs</span>
-                  <span>{space.manifestHash ? "Manifest hashed" : "Hash pending"}</span>
+                  <span>{space.manifestHash ? "Manifest hashed" : "Hash not written yet"}</span>
                 </div>
               </div>
               <aside className="detail-registry-panel">
@@ -453,7 +455,7 @@ export function SpaceDetailPage() {
                   </div>
                   <div>
                     <dt>Hash</dt>
-                    <dd>{space.manifestHash ? `${space.manifestHash.slice(0, 14)}...` : "Pending"}</dd>
+                    <dd>{space.manifestHash ? `${space.manifestHash.slice(0, 14)}...` : "Not written yet"}</dd>
                   </div>
                 </dl>
                 {space.payment && (
@@ -467,7 +469,7 @@ export function SpaceDetailPage() {
                       {isEditing ? "Close editor" : "Edit Space"}
                     </button>
                     <button className="button danger" type="button" onClick={removeSpace}>
-                      Delete local copy
+                      Remove from Vault
                     </button>
                   </div>
                 )}
@@ -699,7 +701,7 @@ export function SpaceDetailPage() {
                       </div>
                       <div>
                         <dt>Seller</dt>
-                        <dd>{paymentReceipt.creator ? shortenAddress(paymentReceipt.creator) : "Unknown"}</dd>
+                        <dd>{paymentReceipt.creator ? shortenAddress(paymentReceipt.creator) : "Not available"}</dd>
                       </div>
                     </dl>
                   )}
@@ -750,7 +752,7 @@ export function SpaceDetailPage() {
             <h1>Space not found.</h1>
             <p>
               {importError ??
-                "This browser has no local metadata for that Space. Open a share link with manifest metadata or browse local Spaces."}
+                "Oria could not find metadata for this Space on the active registry or share link."}
             </p>
             <Link className="button primary" to="/spaces">
               Back to Spaces

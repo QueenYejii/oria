@@ -21,7 +21,7 @@ export function VaultPage() {
           <p className="eyebrow">Vault</p>
           <h1>Your published work.</h1>
           <p>
-            Oria filters local Space metadata by the connected wallet and active Shelby network.
+            Manage the Spaces connected to your wallet on the active Shelby network.
           </p>
         </section>
 
@@ -38,8 +38,8 @@ export function VaultPage() {
           </section>
         ) : (
           <section className="empty-state">
-            <h2>No Spaces for this wallet yet.</h2>
-            <p>Create a Space on {activeNetwork} to populate your Vault.</p>
+            <h2>Your Vault is empty on {activeNetwork}.</h2>
+            <p>Publish a Space from this wallet and it will appear here for management.</p>
             <div className="empty-actions">
               <Link className="button primary" to="/create">
                 Create a Space

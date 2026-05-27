@@ -32,17 +32,23 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
   render() {
     if (this.state.error) {
+      const isChunkError = isDynamicImportError(this.state.error);
+
       return (
         <main className="route-error">
           <div>
-            <p className="eyebrow">Route error</p>
-            <h1>Oria could not render this view.</h1>
-            <p>{this.state.error.message}</p>
+            <p className="eyebrow">View interrupted</p>
+            <h1>{isChunkError ? "A fresh version of Oria is ready." : "This view needs a refresh."}</h1>
+            <p>
+              {isChunkError
+                ? "Your browser is holding an older app bundle. Reload once to continue with the latest deployment."
+                : "Oria could not finish rendering this screen. Try again, or reload if the issue persists."}
+            </p>
             <button
               className="button primary"
               type="button"
               onClick={() => {
-                if (isDynamicImportError(this.state.error)) {
+                if (isChunkError) {
                   window.location.reload();
                   return;
                 }
@@ -50,8 +56,12 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
                 this.setState({ error: null });
               }}
             >
-              {isDynamicImportError(this.state.error) ? "Reload Oria" : "Try again"}
+              {isChunkError ? "Reload Oria" : "Try again"}
             </button>
+            <details className="route-error-details">
+              <summary>Technical detail</summary>
+              <code>{this.state.error.message}</code>
+            </details>
           </div>
         </main>
       );

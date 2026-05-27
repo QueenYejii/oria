@@ -189,10 +189,11 @@ export function PaymentHistoryPage() {
         <section className="receipt-command-panel" aria-label="Receipt health">
           <article>
             <span className="tiny-label">Mirror status</span>
-            <strong>{chainSource === "indexer" ? "Indexer synced" : "Local-first audit"}</strong>
+            <strong>{address ? (chainSource === "indexer" ? "Indexer synced" : "Local-first audit") : "Wallet required"}</strong>
             <p>
-              Buyer receipts stay on this wallet first, then Oria mirrors verified purchases for
-              creator dashboards when the API can confirm the transaction.
+              {address
+                ? "Buyer receipts stay on this wallet first, then Oria mirrors verified purchases for creator dashboards when the API can confirm the transaction."
+                : "Connect a wallet from the header to load buyer receipts and incoming creator sales."}
             </p>
           </article>
           <article>
@@ -249,7 +250,7 @@ export function PaymentHistoryPage() {
         {sales.length > 0 ? (
           <section className="payment-list">
             {sales.map((sale, index) => {
-              const title = sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Paid Space";
+              const title = sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Indexed paid Space";
 
               return (
                 <article key={`${sale.spaceId}-${sale.buyer}-${index}`} className="payment-row premium sale-row receipt-ledger-row">
@@ -273,10 +274,11 @@ export function PaymentHistoryPage() {
           </section>
         ) : (
           <section className="empty-state compact-empty">
-            <h2>No incoming sales yet.</h2>
+            <h2>{address ? "No incoming sales yet." : "Connect a creator wallet."}</h2>
             <p>
-              When a buyer unlocks one of your paid Spaces, Oria will list the buyer wallet and
-              sale amount here from the registry.
+              {address
+                ? "When a buyer unlocks one of your paid Spaces, Oria will list the buyer wallet and sale amount here from the registry."
+                : "Incoming sales are tied to the connected creator wallet."}
             </p>
           </section>
         )}
@@ -293,7 +295,7 @@ export function PaymentHistoryPage() {
           <section className="payment-list">
             {records.map((record) => {
               const space = getSpace(record.spaceId);
-              const title = record.spaceTitle ?? space?.title ?? "Imported paid Space";
+              const title = record.spaceTitle ?? space?.title ?? "Verified paid unlock";
 
               return (
                 <article key={`${record.spaceId}-${record.payer}-${record.txHash}`} className="payment-row premium receipt-ledger-row">
@@ -319,14 +321,17 @@ export function PaymentHistoryPage() {
           </section>
         ) : (
           <section className="empty-state">
-            <h2>No paid unlocks yet.</h2>
+            <h2>{address ? "No paid unlocks yet." : "Connect a wallet to view receipts."}</h2>
             <p>
-              Paid Space purchases will appear here after a wallet unlock succeeds. Connect the
-              same wallet to sync on-chain events when indexing is available.
+              {address
+                ? "Purchases will appear here after this wallet unlocks a paid Space. Connect the same wallet to sync receipts and on-chain context."
+                : "Buyer receipts are wallet-specific, so Oria needs a connected account before showing payment history."}
             </p>
-            <Link className="button primary" to="/spaces">
-              Discover paid Spaces
-            </Link>
+            {address && (
+              <Link className="button primary" to="/spaces">
+                Discover paid Spaces
+              </Link>
+            )}
           </section>
         )}
       </main>

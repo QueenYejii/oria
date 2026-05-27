@@ -67,7 +67,7 @@ export function CreatorPage() {
     ),
   ).slice(0, 4);
   const hue = getCreatorHue(address);
-  const displayName = profile?.displayName || (address ? shortenAddress(address) : "Unknown creator");
+  const displayName = profile?.displayName || (address ? shortenAddress(address) : "Creator profile");
   const socialLinks = profile?.links ?? profileDraft;
 
   useEffect(() => subscribeToCreatorProfiles(() => setProfile(getLocalCreatorProfile(address))), [address]);
@@ -177,7 +177,7 @@ export function CreatorPage() {
               <h1>{displayName}</h1>
               <p>
                 {profile?.bio ||
-                  "A Shelby-backed publishing profile for media Spaces, release manifests, and unlockable creator archives indexed by Oria."}
+                  "A Shelby-backed creator profile for media Spaces, release manifests, and unlockable archives indexed by Oria."}
               </p>
               <div className="creator-address-row">
                 <code>{address ?? "No address supplied"}</code>
@@ -241,7 +241,7 @@ export function CreatorPage() {
                 <input
                   value={profileDraft.displayName}
                   onChange={(event) => setProfileDraft((draft) => ({ ...draft, displayName: event.target.value }))}
-                  placeholder="QueenYejii"
+                  placeholder="Creator name"
                 />
               </label>
               <label>
@@ -249,7 +249,7 @@ export function CreatorPage() {
                 <input
                   value={profileDraft.avatar}
                   onChange={(event) => setProfileDraft((draft) => ({ ...draft, avatar: event.target.value }))}
-                  placeholder="https://..."
+                  placeholder="https://your-domain.com/avatar.png"
                 />
               </label>
               <label className="wide">
@@ -258,7 +258,7 @@ export function CreatorPage() {
                   value={profileDraft.bio}
                   onChange={(event) => setProfileDraft((draft) => ({ ...draft, bio: event.target.value }))}
                   rows={4}
-                  placeholder="What do you publish with Oria?"
+                  placeholder="Describe your work, archive, or release practice."
                 />
               </label>
               <label>
@@ -321,7 +321,7 @@ export function CreatorPage() {
             <div>
               <span>Media focus</span>
             </div>
-            <strong>{mediaKinds.length ? mediaKinds.join(", ") : "Pending"}</strong>
+            <strong>{mediaKinds.length ? mediaKinds.join(", ") : "No media yet"}</strong>
             <p>Media types are inferred from the creator's current Shelby blobs.</p>
           </article>
         </section>
@@ -341,7 +341,7 @@ export function CreatorPage() {
           </article>
           <article>
             <span>Last update</span>
-            <strong>{latestUpdate ? new Date(latestUpdate).toLocaleDateString() : "Pending"}</strong>
+            <strong>{latestUpdate ? new Date(latestUpdate).toLocaleDateString() : "No updates yet"}</strong>
           </article>
         </section>
 
@@ -363,7 +363,7 @@ export function CreatorPage() {
         ) : (
           <section className="empty-state">
             <h2>No Spaces found for this creator.</h2>
-            <p>Once the discovery API indexes this creator, Spaces will appear here.</p>
+            <p>Published Spaces from this address will appear here after Oria reads them from the registry.</p>
           </section>
         )}
       </main>

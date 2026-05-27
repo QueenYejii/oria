@@ -123,7 +123,7 @@ function normalizeReceipt(input) {
     txHash: String(receipt.txHash),
     amountOctas: Number(receipt.amountOctas || 0),
     currency: receipt.currency === "SHELBY_USD" ? "SHELBY_USD" : "APT",
-    spaceTitle: String(receipt.spaceTitle || "Paid Space"),
+    spaceTitle: String(receipt.spaceTitle || "Indexed paid Space"),
     paidAt: Number(receipt.paidAt || Date.now()),
     source: "receipt_mirror",
     registryModule: receipt.registryModule ? String(receipt.registryModule) : undefined,

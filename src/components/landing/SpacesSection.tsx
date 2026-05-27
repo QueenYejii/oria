@@ -2,12 +2,12 @@ export function SpacesSection() {
   return (
     <>
       <section className="section intro reveal" data-reveal id="spaces">
-        <p className="eyebrow">A product surface, not a protocol demo</p>
+        <p className="eyebrow">Built as a real publishing surface</p>
         <div className="split-heading">
           <h2>Spaces make Shelby storage feel intentional.</h2>
           <p>
             Each Oria Space bundles files, previews, access context, and network state into
-            one polished destination that normal users can understand.
+            one polished destination that creators and collectors can understand.
           </p>
         </div>
       </section>

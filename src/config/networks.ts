@@ -12,7 +12,7 @@ export const shelbyNetworks = {
     shelbyRpcUrl: "https://api.shelbynet.shelby.xyz/shelby",
     shelbyIndexerUrl:
       "https://api.shelbynet.aptoslabs.com/nocode/v1/public/alias/shelby/shelbynet/v1/graphql",
-    description: "Best for protocol experiments where reset risk is acceptable.",
+    description: "Best for live Shelbynet publishing while the network is actively evolving.",
   },
   testnet: {
     id: "testnet",
@@ -24,6 +24,6 @@ export const shelbyNetworks = {
     shelbyRpcUrl: "https://api.testnet.shelby.xyz/shelby",
     shelbyIndexerUrl:
       "https://api.testnet.aptoslabs.com/nocode/v1/public/alias/shelby/testnet/v1/graphql",
-    description: "Best for stable demos, portfolio flows, and repeatable testing.",
+    description: "Best for stable public testing, portfolio releases, and repeatable creator flows.",
   },
 } as const satisfies Record<string, OriaNetworkConfig>;

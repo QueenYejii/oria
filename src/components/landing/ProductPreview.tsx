@@ -1,21 +1,21 @@
 const uploadRows = [
   {
     type: "MP4",
-    name: "atelier-preview.mp4",
+    name: "feature-cut.mp4",
     status: "Encoded and registered",
     progress: "100%",
     state: "complete",
   },
   {
     type: "ZIP",
-    name: "source-pack.zip",
+    name: "creator-pack.zip",
     status: "Uploading to Shelby RPC",
     progress: "72%",
     state: "active",
   },
   {
     type: "PNG",
-    name: "cover-frame.png",
+    name: "release-cover.png",
     status: "Waiting for signature",
     progress: "Queued",
     state: "",
@@ -32,7 +32,7 @@ export function ProductPreview() {
         <div className="stage-topbar">
           <div>
             <span className="tiny-label">Current Space</span>
-            <strong>Studio Dispatch</strong>
+            <strong>Release Room</strong>
           </div>
           <div className="stage-actions" aria-hidden="true">
             <span />
@@ -53,7 +53,7 @@ export function ProductPreview() {
           </span>
           <span>
             Release
-            <strong>Draft v02</strong>
+            <strong>Version 02</strong>
           </span>
         </div>
 
@@ -64,7 +64,7 @@ export function ProductPreview() {
           </div>
           <div className="drop-sigil">O</div>
           <div>
-            <h2>Drop files here</h2>
+            <h2>Prepare release</h2>
             <p>Video, audio, archives, previews, or datasets up to large-blob scale.</p>
           </div>
           <div className="drop-meter" aria-hidden="true">

@@ -65,7 +65,7 @@ export function SalesPage() {
     return titles;
   }, [spaces]);
   const resolveSpaceTitle = (sale: CreatorSaleRecord) =>
-    sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Paid Space";
+    sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Indexed paid Space";
   const revenueLabel = useMemo(() => {
     const byCurrency = new Map<string, number>();
     for (const sale of sales) {
@@ -150,7 +150,7 @@ export function SalesPage() {
 
         return [
           sale.spaceId,
-          sale.spaceTitle ?? spaceTitleById.get(sale.spaceId) ?? space?.title ?? "Paid Space",
+          sale.spaceTitle ?? spaceTitleById.get(sale.spaceId) ?? space?.title ?? "Indexed paid Space",
           sale.buyer,
           String(sale.amountOctas / 100_000_000),
           sale.currency ?? "APT",
@@ -178,10 +178,10 @@ export function SalesPage() {
       <main className="collection-page sales-page">
         <section className="collection-heading">
           <p className="eyebrow">Seller dashboard</p>
-          <h1>Sales you can actually see.</h1>
+          <h1>Creator sales ledger.</h1>
           <p>
-            Track paid unlocks for your Spaces from registry purchases and mirrored receipts. This
-            gives creators a clear view after buyer payments settle into their wallet.
+            Track paid unlocks from registry purchases and mirrored receipts, with buyer, amount,
+            timestamp, and transaction context in one place.
           </p>
         </section>
 
@@ -207,10 +207,11 @@ export function SalesPage() {
         <section className="payment-state-card">
           <div>
             <span className="tiny-label">Receipt source</span>
-            <strong>{storeMode}</strong>
+            <strong>{address ? storeMode : "Wallet required"}</strong>
             <p>
-              Tx hash and exact timestamp appear when the buyer receipt mirror is available. Registry
-              purchases still verify buyer access even without Shelbynet event indexing.
+              {address
+                ? "Transaction hashes appear when Oria can match the registry purchase with the buyer transaction. Access remains verified by the registry either way."
+                : "Connect the creator wallet from the header to load registry sales and mirrored receipts."}
             </p>
           </div>
           <div className="sales-actions">
@@ -268,7 +269,7 @@ export function SalesPage() {
           <section className="space-revenue-panel" aria-label="Revenue by Space">
             <div className="section-label">
               <p className="eyebrow">Revenue by Space</p>
-              <h2>Top paid works.</h2>
+              <h2>Top paid Spaces.</h2>
             </div>
             <div className="space-revenue-list">
               {revenueBySpace.slice(0, 5).map((space) => (
@@ -322,10 +323,16 @@ export function SalesPage() {
           </section>
         ) : (
           <section className="empty-state">
-            <h2>{sales.length > 0 ? "No sales match this filter." : "No sales yet."}</h2>
+            <h2>
+              {sales.length > 0
+                ? "No sales match this filter."
+                : address
+                  ? "No paid unlocks yet."
+                  : "Connect a creator wallet."}
+            </h2>
             {sales.length > 0 ? (
               <p>Try a different buyer wallet, Space title, or transaction hash.</p>
-            ) : (
+            ) : address ? (
               <>
                 <p>
                   When buyers unlock your paid Spaces, they will appear here with buyer wallet, amount,
@@ -335,6 +342,8 @@ export function SalesPage() {
                   Publish paid Space
                 </Link>
               </>
+            ) : (
+              <p>Use the wallet control in the header to open the sales ledger for your published Spaces.</p>
             )}
           </section>
         )}

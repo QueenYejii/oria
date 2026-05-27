@@ -28,9 +28,9 @@ function mergeSales(registrySales, receiptSales) {
     const existingTitle = existing?.spaceTitle;
     const saleTitle = sale.spaceTitle;
     const title =
-      saleTitle && saleTitle !== "Paid Space"
+      saleTitle && saleTitle !== "Paid Space" && saleTitle !== "Indexed paid Space"
         ? saleTitle
-        : existingTitle && existingTitle !== "Paid Space"
+        : existingTitle && existingTitle !== "Paid Space" && existingTitle !== "Indexed paid Space"
           ? existingTitle
           : saleTitle || existingTitle;
 

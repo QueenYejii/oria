@@ -17,7 +17,7 @@ export function SpaceCard({ space }: { space: Space }) {
           <span>{space.visibility.replace("_", " ")}</span>
         </div>
         <h3>{space.title}</h3>
-        <p>{space.description || "No description added."}</p>
+        <p>{space.description || "Creator has not added a description yet."}</p>
       </div>
 
       <div className="space-card-footer">

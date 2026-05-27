@@ -37,7 +37,7 @@ export function Hero() {
           </span>
           <span>
             <strong>0</strong>
-            product clutter
+            loose handoffs
           </span>
         </div>
 

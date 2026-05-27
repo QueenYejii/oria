@@ -66,10 +66,10 @@ export function SpacesPage() {
       <main className="collection-page">
         <section className="collection-heading">
           <p className="eyebrow">Spaces</p>
-          <h1>Discover Shelby-backed drops.</h1>
+          <h1>Discover Shelby-backed Spaces.</h1>
           <p>
-            Browse public releases, paid unlocks, creator archives, and large-media bundles on the
-            active Shelby network.
+            Browse public releases, paid unlocks, creator archives, and large-media bundles published
+            on the active Shelby network.
           </p>
         </section>
 
@@ -144,8 +144,8 @@ export function SpacesPage() {
           </section>
         ) : (
           <section className="empty-state">
-            <h2>No Spaces on this network yet.</h2>
-            <p>Create your first Space, then return here to browse it.</p>
+            <h2>No Spaces found for this view.</h2>
+            <p>Adjust the filters or publish a Space on {activeNetwork} to start the gallery.</p>
             <div className="empty-actions">
               <Link className="button primary" to="/create">
                 Create a Space
