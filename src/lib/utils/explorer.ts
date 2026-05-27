@@ -4,8 +4,7 @@ export function getTransactionExplorerUrl(txHash: string, network: OriaNetwork) 
   const searchParams = new URLSearchParams();
 
   if (network === "shelbynet") {
-    searchParams.set("network", "custom");
-    searchParams.set("nodeUrl", "https://api.shelbynet.shelby.xyz/v1");
+    searchParams.set("network", "shelbynet");
   } else {
     searchParams.set("network", "testnet");
   }

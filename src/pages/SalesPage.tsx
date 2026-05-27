@@ -20,7 +20,7 @@ export function SalesPage() {
   const wallet = useWallet();
   const address = getAccountAddress(wallet.account);
   const { activeNetwork } = useActiveNetwork();
-  useSpaces(address ? { creator: address, network: activeNetwork } : { network: activeNetwork });
+  const spaces = useSpaces(address ? { creator: address, network: activeNetwork } : { network: activeNetwork });
   const [sales, setSales] = useState<CreatorSaleRecord[]>([]);
   const [storeMode, setStoreMode] = useState("registry");
   const [error, setError] = useState<string | null>(null);
@@ -59,10 +59,25 @@ export function SalesPage() {
     };
   }, [activeNetwork, address]);
 
-  const revenueApt = useMemo(
-    () => sales.reduce((sum, sale) => sum + Number(sale.amountOctas || 0), 0) / 100_000_000,
-    [sales],
-  );
+  const spaceTitleById = useMemo(() => {
+    const titles = new Map<string, string>();
+    for (const space of spaces) titles.set(space.id, space.title);
+    return titles;
+  }, [spaces]);
+  const resolveSpaceTitle = (sale: CreatorSaleRecord) =>
+    sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Paid Space";
+  const revenueLabel = useMemo(() => {
+    const byCurrency = new Map<string, number>();
+    for (const sale of sales) {
+      const currency = sale.currency || "APT";
+      byCurrency.set(currency, (byCurrency.get(currency) || 0) + Number(sale.amountOctas || 0));
+    }
+
+    return [...byCurrency.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([currency, amount]) => formatPaymentAmount(amount, currency))
+      .join(" + ") || "0 APT";
+  }, [sales]);
   const buyers = useMemo(
     () => new Set(sales.map((sale) => sale.buyer.toLowerCase())).size,
     [sales],
@@ -75,8 +90,7 @@ export function SalesPage() {
     const needle = query.trim().toLowerCase();
     const records = sales.filter((sale) => {
       if (!needle) return true;
-      const space = getSpace(sale.spaceId);
-      const title = sale.spaceTitle ?? space?.title ?? "";
+      const title = resolveSpaceTitle(sale);
 
       return (
         title.toLowerCase().includes(needle) ||
@@ -88,16 +102,17 @@ export function SalesPage() {
 
     return [...records].sort((a, b) => {
       if (sortMode === "highest") return Number(b.amountOctas || 0) - Number(a.amountOctas || 0);
-      if (sortMode === "space") return (a.spaceTitle ?? a.spaceId).localeCompare(b.spaceTitle ?? b.spaceId);
+      if (sortMode === "space") return resolveSpaceTitle(a).localeCompare(resolveSpaceTitle(b));
       return saleTimestamp(b) - saleTimestamp(a);
     });
-  }, [query, sales, sortMode]);
+  }, [query, sales, sortMode, spaceTitleById]);
   const revenueBySpace = useMemo(() => {
     const bySpace = new Map<
       string,
       {
         spaceId: string;
         title: string;
+        currency: string;
         sales: number;
         revenueOctas: number;
         buyers: Set<string>;
@@ -105,12 +120,14 @@ export function SalesPage() {
     >();
 
     for (const sale of sales) {
-      const space = getSpace(sale.spaceId);
+      const currency = sale.currency || "APT";
+      const key = `${sale.spaceId}:${currency}`;
       const current =
-        bySpace.get(sale.spaceId) ??
+        bySpace.get(key) ??
         {
           spaceId: sale.spaceId,
-          title: sale.spaceTitle ?? space?.title ?? "Paid Space",
+          title: resolveSpaceTitle(sale),
+          currency,
           sales: 0,
           revenueOctas: 0,
           buyers: new Set<string>(),
@@ -119,11 +136,11 @@ export function SalesPage() {
       current.sales += 1;
       current.revenueOctas += Number(sale.amountOctas || 0);
       current.buyers.add(sale.buyer.toLowerCase());
-      bySpace.set(sale.spaceId, current);
+      bySpace.set(key, current);
     }
 
     return [...bySpace.values()].sort((a, b) => b.revenueOctas - a.revenueOctas);
-  }, [sales]);
+  }, [sales, spaceTitleById]);
   const exportCsv = () => {
     const rows = [
       ["space_id", "title", "buyer", "amount", "currency", "paid_at", "tx_hash", "source"],
@@ -133,7 +150,7 @@ export function SalesPage() {
 
         return [
           sale.spaceId,
-          sale.spaceTitle ?? space?.title ?? "Paid Space",
+          sale.spaceTitle ?? spaceTitleById.get(sale.spaceId) ?? space?.title ?? "Paid Space",
           sale.buyer,
           String(sale.amountOctas / 100_000_000),
           sale.currency ?? "APT",
@@ -175,7 +192,7 @@ export function SalesPage() {
           </article>
           <article>
             <span>Revenue</span>
-            <strong>{revenueApt.toLocaleString()} APT</strong>
+            <strong>{revenueLabel}</strong>
           </article>
           <article>
             <span>Buyers</span>
@@ -255,7 +272,7 @@ export function SalesPage() {
             </div>
             <div className="space-revenue-list">
               {revenueBySpace.slice(0, 5).map((space) => (
-                <Link key={space.spaceId} to={`/spaces/${space.spaceId}`} className="space-revenue-row">
+                <Link key={`${space.spaceId}-${space.currency}`} to={`/spaces/${space.spaceId}`} className="space-revenue-row">
                   <div>
                     <strong>{space.title}</strong>
                     <span>
@@ -263,7 +280,7 @@ export function SalesPage() {
                       {space.buyers.size === 1 ? "" : "s"}
                     </span>
                   </div>
-                  <b>{formatPaymentAmount(space.revenueOctas)}</b>
+                  <b>{formatPaymentAmount(space.revenueOctas, space.currency)}</b>
                 </Link>
               ))}
             </div>
@@ -273,8 +290,7 @@ export function SalesPage() {
         {filteredSales.length > 0 ? (
           <section className="payment-list">
             {filteredSales.map((sale, index) => {
-              const space = getSpace(sale.spaceId);
-              const title = sale.spaceTitle ?? space?.title ?? "Paid Space";
+              const title = resolveSpaceTitle(sale);
               const paidAt = saleTimestamp(sale);
 
               return (

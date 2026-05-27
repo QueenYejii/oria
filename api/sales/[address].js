@@ -23,16 +23,27 @@ function mergeSales(registrySales, receiptSales) {
   const byKey = new Map();
 
   for (const sale of [...registrySales, ...receiptSales]) {
-    const key = `${sale.spaceId}:${String(sale.buyer).toLowerCase()}:${sale.txHash || "registry"}`;
+    const key = `${sale.network}:${sale.spaceId}:${String(sale.buyer).toLowerCase()}`;
     const existing = byKey.get(key);
+    const existingTitle = existing?.spaceTitle;
+    const saleTitle = sale.spaceTitle;
+    const title =
+      saleTitle && saleTitle !== "Paid Space"
+        ? saleTitle
+        : existingTitle && existingTitle !== "Paid Space"
+          ? existingTitle
+          : saleTitle || existingTitle;
+
     byKey.set(key, {
-      ...sale,
       ...existing,
-      txHash: existing?.txHash ?? sale.txHash,
-      paidAt: existing?.paidAt ?? sale.paidAt,
-      transactionVersion: existing?.transactionVersion ?? sale.transactionVersion,
-      spaceTitle: existing?.spaceTitle ?? sale.spaceTitle,
-      source: existing?.source ?? sale.source ?? "registry_purchases_table",
+      ...sale,
+      amountOctas: Number(sale.amountOctas || 0) > 0 ? sale.amountOctas : existing?.amountOctas,
+      currency: sale.currency ?? existing?.currency ?? "APT",
+      txHash: sale.txHash ?? existing?.txHash,
+      paidAt: sale.paidAt ?? existing?.paidAt,
+      transactionVersion: sale.transactionVersion ?? existing?.transactionVersion,
+      spaceTitle: title,
+      source: sale.source ?? existing?.source ?? "registry_purchases_table",
     });
   }
 

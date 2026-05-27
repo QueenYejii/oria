@@ -20,6 +20,22 @@ function amountLabel(record: LocalPaymentRecord) {
     : "Verified";
 }
 
+function volumeLabel(records: Array<{ amountOctas?: number; currency?: string; spaceId: string }>) {
+  const byCurrency = new Map<string, number>();
+
+  for (const record of records) {
+    const space = getSpace(record.spaceId);
+    const amount = record.amountOctas ?? space?.payment?.priceOctas ?? 0;
+    const currency = record.currency ?? space?.payment?.currency ?? "APT";
+    byCurrency.set(currency, (byCurrency.get(currency) || 0) + amount);
+  }
+
+  return [...byCurrency.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([currency, amount]) => formatPaymentAmount(amount, currency))
+    .join(" + ") || "0 APT";
+}
+
 function mergePayments(localRecords: LocalPaymentRecord[], chainRecords: LocalPaymentRecord[]) {
   const byKey = new Map<string, LocalPaymentRecord>();
 
@@ -43,7 +59,7 @@ export function PaymentHistoryPage() {
   const wallet = useWallet();
   const { activeNetwork } = useActiveNetwork();
   const address = getAccountAddress(wallet.account);
-  useSpaces(address ? { creator: address, network: activeNetwork } : { network: activeNetwork });
+  const spaces = useSpaces(address ? { creator: address, network: activeNetwork } : { network: activeNetwork });
   const [localRecords, setLocalRecords] = useState(() => listLocalPayments());
   const [chainRecords, setChainRecords] = useState<LocalPaymentRecord[]>([]);
   const [mirroredRecords, setMirroredRecords] = useState<LocalPaymentRecord[]>([]);
@@ -128,19 +144,14 @@ export function PaymentHistoryPage() {
     () => mergePayments(localRecords, [...chainRecords, ...mirroredRecords]),
     [chainRecords, localRecords, mirroredRecords],
   );
+  const spaceTitleById = useMemo(() => {
+    const titles = new Map<string, string>();
+    for (const space of spaces) titles.set(space.id, space.title);
+    return titles;
+  }, [spaces]);
 
-  const totalApt = useMemo(
-    () =>
-      records.reduce((sum, record) => {
-        const space = getSpace(record.spaceId);
-        return sum + (record.amountOctas ?? space?.payment?.priceOctas ?? 0);
-      }, 0) / 100_000_000,
-    [records],
-  );
-  const totalSalesApt = useMemo(
-    () => sales.reduce((sum, sale) => sum + Number(sale.amountOctas || 0), 0) / 100_000_000,
-    [sales],
-  );
+  const volume = useMemo(() => volumeLabel(records), [records]);
+  const salesVolume = useMemo(() => volumeLabel(sales), [sales]);
 
   return (
     <>
@@ -163,7 +174,7 @@ export function PaymentHistoryPage() {
           </article>
           <article>
             <span>Known volume</span>
-            <strong>{totalApt.toLocaleString()} APT</strong>
+            <strong>{volume}</strong>
           </article>
           <article>
             <span>Incoming sales</span>
@@ -171,7 +182,7 @@ export function PaymentHistoryPage() {
           </article>
           <article>
             <span>Creator revenue</span>
-            <strong>{totalSalesApt.toLocaleString()} APT</strong>
+            <strong>{salesVolume}</strong>
           </article>
         </section>
 
@@ -238,7 +249,7 @@ export function PaymentHistoryPage() {
         {sales.length > 0 ? (
           <section className="payment-list">
             {sales.map((sale, index) => {
-              const space = getSpace(sale.spaceId);
+              const title = sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || "Paid Space";
 
               return (
                 <article key={`${sale.spaceId}-${sale.buyer}-${index}`} className="payment-row premium sale-row receipt-ledger-row">
@@ -247,7 +258,7 @@ export function PaymentHistoryPage() {
                       <span className="network-badge stable">{sale.network}</span>
                       <span>Paid unlock</span>
                     </div>
-                    <h2>{space?.title ?? "Paid Space"}</h2>
+                    <h2>{title}</h2>
                     <p>Buyer {shortenAddress(sale.buyer)}</p>
                     <code>{sale.spaceId}</code>
                   </div>
