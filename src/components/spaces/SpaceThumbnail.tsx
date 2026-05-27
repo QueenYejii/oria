@@ -1,4 +1,4 @@
-import { ImageOff } from "lucide-react";
+import { Image, LockKeyhole } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createShelbyClient } from "../../lib/shelby/client";
 import { getPreviewKind } from "../../lib/utils/files";
@@ -37,6 +37,14 @@ export function SpaceThumbnail({ space }: { space: Space }) {
   const fallbackKind = getPreviewKind(space.files[0]?.mimeType ?? "");
   const isPrivatePreview = space.visibility !== "public" && !space.thumbnailIsPublic;
   const privateLabel = space.visibility === "paid" ? "Paid preview" : "Wallet gated";
+  const fallbackLabel =
+    status === "loading"
+      ? "Loading preview"
+      : isPrivatePreview
+        ? privateLabel
+        : status === "failed"
+          ? "Preview unavailable"
+          : fallbackKind;
 
   useEffect(() => {
     if (!file || !file.mimeType.startsWith("image/") || file.size > thumbnailSizeLimit) {
@@ -95,8 +103,8 @@ export function SpaceThumbnail({ space }: { space: Space }) {
         <img src={objectUrl} alt="" loading="lazy" decoding="async" />
       ) : (
         <>
-          <span>{status === "loading" ? "Loading" : fallbackKind}</span>
-          {status === "failed" && <ImageOff size={18} />}
+          <span>{fallbackLabel}</span>
+          {isPrivatePreview ? <LockKeyhole size={18} /> : <Image size={18} />}
           <i />
         </>
       )}
