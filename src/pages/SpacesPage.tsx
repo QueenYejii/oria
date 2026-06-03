@@ -143,9 +143,9 @@ export function SpacesPage() {
             ))}
           </section>
         ) : (
-          <section className="empty-state">
-            <h2>No Spaces found for this view.</h2>
-            <p>Adjust the filters or publish a Space on {activeNetwork} to start the gallery.</p>
+          <section className="empty-state market-empty-state">
+            <h2>No Spaces in this view.</h2>
+            <p>Clear the filters or publish the first Space on {activeNetwork}.</p>
             <div className="empty-actions">
               <Link className="button primary" to="/create">
                 Create a Space

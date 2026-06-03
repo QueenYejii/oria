@@ -45,12 +45,18 @@ export function WalletConnect() {
 
   return (
     <div className="wallet-menu">
-      <button className="header-action" type="button" onClick={() => setOpen((value) => !value)}>
+      <button
+        className="header-action"
+        type="button"
+        aria-expanded={open}
+        aria-label="Connect Aptos wallet"
+        onClick={() => setOpen((value) => !value)}
+      >
         Connect Wallet
       </button>
 
       {open && (
-        <div className="wallet-popover">
+        <div className="wallet-popover" aria-label="Available wallets">
           <div className="wallet-popover-head">
             <span className="tiny-label">Available wallets</span>
             <strong>{wallets.length}</strong>

@@ -218,6 +218,7 @@ export function CreateSpacePage() {
                 key={option}
                 type="button"
                 className={visibility === option ? "active" : ""}
+                aria-pressed={visibility === option}
                 onClick={() => setVisibility(option)}
               >
                 {option.replace("_", " ")}
