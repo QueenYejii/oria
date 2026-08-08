@@ -8,18 +8,26 @@ const sdkNetworkByOriaNetwork = {
   shelbynet: Network.SHELBYNET,
 } as const satisfies Record<OriaNetwork, Network>;
 
-function getShelbyApiKey(network: OriaNetwork) {
-  if (network === "shelbynet") {
-    return (
-      (import.meta.env.VITE_SHELBYNET_API_KEY as string | undefined) ||
-      (import.meta.env.VITE_SHELBY_API_KEY as string | undefined)
-    );
-  }
+const networkApiKeyEnv = {
+  shelbynet: "VITE_SHELBYNET_API_KEY",
+  testnet: "VITE_SHELBY_TESTNET_API_KEY",
+} as const satisfies Record<OriaNetwork, string>;
 
-  return (
-    (import.meta.env.VITE_SHELBY_TESTNET_API_KEY as string | undefined) ||
-    (import.meta.env.VITE_SHELBY_API_KEY as string | undefined)
-  );
+function normalizeApiKey(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function getShelbyApiKey(network: OriaNetwork) {
+  const env = import.meta.env as Record<string, string | undefined>;
+  return normalizeApiKey(env[networkApiKeyEnv[network]]) || normalizeApiKey(env.VITE_SHELBY_API_KEY) || undefined;
+}
+
+export function getShelbyApiKeyEnvName(network: OriaNetwork) {
+  return networkApiKeyEnv[network];
+}
+
+export function hasShelbyApiKey(network: OriaNetwork) {
+  return Boolean(getShelbyApiKey(network));
 }
 
 export function createShelbyClient(network: OriaNetwork) {

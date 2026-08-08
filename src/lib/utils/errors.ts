@@ -4,7 +4,7 @@ export function getErrorMessage(error: unknown) {
   const message = rawMessage.replace(/\s+/g, " ").trim();
 
   if (/anonymous requests are not allowed|401 \(unauthorized\)|status.*401/i.test(message)) {
-    return "Shelby rejected the request. Check that the Shelbynet API key is active for this project, then try again.";
+    return "Shelby rejected the request because this deployment has no active client API key. Add the network-specific Shelby key in Vercel, then redeploy.";
   }
 
   if (/field ['"]?blobs['"]? not found|query_root/i.test(message)) {

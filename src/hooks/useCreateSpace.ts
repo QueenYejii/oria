@@ -2,7 +2,7 @@ import { useUploadBlobs } from "@shelby-protocol/react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useMemo, useRef, useState } from "react";
 import { useActiveNetwork } from "./useActiveNetwork";
-import { createShelbyClient } from "../lib/shelby/client";
+import { createShelbyClient, getShelbyApiKey, getShelbyApiKeyEnvName } from "../lib/shelby/client";
 import { encodeSpaceManifest } from "../lib/spaces/manifest";
 import { getPaymentAssetAddress, getRegistryModuleName, registerSpaceOnChain } from "../lib/registry/client";
 import { saveSpace } from "../lib/spaces/local-store";
@@ -87,6 +87,12 @@ export function useCreateSpace() {
 
     if (!wallet.connected || !wallet.account || !creator) {
       throw new Error("Connect an Aptos wallet before publishing a Space.");
+    }
+
+    if (!getShelbyApiKey(activeNetwork)) {
+      throw new Error(
+        `Shelby ${activeNetwork} API key is not configured. Add ${getShelbyApiKeyEnvName(activeNetwork)} as a Geomi client key in Vercel, then redeploy.`,
+      );
     }
 
     if (input.files.length === 0) {

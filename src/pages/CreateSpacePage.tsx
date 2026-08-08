@@ -9,6 +9,7 @@ import { useCreateSpace } from "../hooks/useCreateSpace";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useToasts } from "../providers/ToastProvider";
 import { getErrorMessage } from "../lib/utils/errors";
+import { getShelbyApiKeyEnvName, hasShelbyApiKey } from "../lib/shelby/client";
 import {
   clearUploadDraft,
   loadUploadDraft,
@@ -62,6 +63,7 @@ export function CreateSpacePage() {
   const networkMismatch = Boolean(
     wallet.connected && wallet.network?.name && !walletNetworkCompatible
   );
+  const shelbyApiKeyConfigured = hasShelbyApiKey(activeNetwork);
 
   useEffect(() => {
     const draft = loadUploadDraft();
@@ -182,6 +184,12 @@ export function CreateSpacePage() {
               <p className="form-note">
                 Petra reports Shelbynet as a custom network. Oria will publish this Space to
                 Shelbynet.
+              </p>
+            )}
+            {!shelbyApiKeyConfigured && (
+              <p className="form-error">
+                Shelby publishing is unavailable in this deployment. Add the Geomi client key
+                {` ${getShelbyApiKeyEnvName(activeNetwork)}`} in Vercel and redeploy.
               </p>
             )}
             {restoredDraftNotice && (
@@ -349,7 +357,7 @@ export function CreateSpacePage() {
             <button
               className="button primary publish-button"
               type="submit"
-              disabled={isUploading || !wallet.connected || networkMismatch}
+              disabled={isUploading || !wallet.connected || networkMismatch || !shelbyApiKeyConfigured}
             >
               {isUploading ? "Publishing..." : "Publish Space"}
             </button>

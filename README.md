@@ -300,7 +300,8 @@ Important variables:
 VITE_DEFAULT_ORIA_NETWORK=shelbynet
 VITE_APTOS_API_KEY=
 VITE_SHELBY_API_KEY=
-VITE_SHELBYNET_API_KEY=
+VITE_SHELBYNET_API_KEY= # Required for browser uploads on Shelbynet.
+VITE_SHELBY_TESTNET_API_KEY= # Required when switching to Shelby Testnet.
 
 VITE_ORIA_REGISTRY_ADDRESS=0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904
 VITE_ORIA_REGISTRY_MODULE=space_registry_v2
@@ -319,6 +320,13 @@ PORT=8787
 
 For local development, leaving `VITE_ORIA_DISCOVERY_API_URL` empty lets the app
 use local/browser metadata. In production, Vercel routes serve `/api`.
+
+Browser uploads require a Geomi client API key for the active Shelby network.
+Create a client key for `shelbynet` at [geomi.dev](https://geomi.dev/), add it
+to Vercel as `VITE_SHELBYNET_API_KEY` under the Production environment, and
+redeploy. Vite embeds `VITE_*` variables during the build, so changing the
+variable without a new deployment will not update the dApp. Do not use a
+private/server key in the browser.
 
 ### Run
 
