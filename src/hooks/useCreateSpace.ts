@@ -4,7 +4,12 @@ import { useMemo, useRef, useState } from "react";
 import { useActiveNetwork } from "./useActiveNetwork";
 import { createShelbyClient, getShelbyApiKey, getShelbyApiKeyEnvName } from "../lib/shelby/client";
 import { encodeSpaceManifest } from "../lib/spaces/manifest";
-import { getPaymentAssetAddress, getRegistryModuleName, registerSpaceOnChain } from "../lib/registry/client";
+import {
+  assertRegistryReady,
+  getPaymentAssetAddress,
+  getRegistryModuleName,
+  registerSpaceOnChain,
+} from "../lib/registry/client";
 import { saveSpace } from "../lib/spaces/local-store";
 import { clearUploadSession, saveUploadSession } from "../lib/upload/session-store";
 import { getAccountAddress } from "../lib/wallet/address";
@@ -140,6 +145,8 @@ export function useCreateSpace() {
     if (!Number.isFinite(expiresAtMs) || expiresAtMs <= now + minimumRetentionMs) {
       throw new Error("Choose an expiration time at least 10 minutes from now.");
     }
+
+    await assertRegistryReady(activeNetwork);
 
     const spaceId = createId("space");
 

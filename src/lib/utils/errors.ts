@@ -1,4 +1,18 @@
 export function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    if (error.message === "ORIA_REGISTRY_NOT_DEPLOYED") {
+      return "Oria registry is not deployed on Shelbynet. Republish and initialize the Move registry before publishing; no wallet signature was requested.";
+    }
+
+    if (error.message === "ORIA_REGISTRY_NOT_INITIALIZED") {
+      return "Oria registry is deployed but not initialized. Run the registry initialize transaction before publishing; no wallet signature was requested.";
+    }
+
+    if (error.message === "ORIA_REGISTRY_CHECK_FAILED") {
+      return "Oria could not verify the registry on Shelbynet. Check the fullnode connection and try again; no wallet signature was requested.";
+    }
+  }
+
   const rawMessage =
     error instanceof Error ? error.message : typeof error === "string" ? error : "Something went wrong";
   const message = rawMessage.replace(/\s+/g, " ").trim();

@@ -33,9 +33,10 @@ paid downloads.
 
 ## Current Status
 
-Oria is in **Shelbynet development**. The frontend is deployed
-on Vercel, the registry is deployed on Shelbynet, and the discovery API is active
-through Vercel serverless routes.
+Oria is in **Shelbynet development**. The frontend is deployed on Vercel and
+the discovery API is available through Vercel serverless routes. The Move
+registry source is included in this repository; its active deployment must be
+verified against the current Shelbynet ledger before on-chain publishing.
 
 Implemented:
 
@@ -50,7 +51,9 @@ Implemented:
 - Public, wallet-gated, and paid Space modes.
 - APT paid unlock flow.
 - ShelbyUSD-ready registry v2 and frontend flow.
-- On-chain Space Registry v2 deployed and initialized on Shelbynet.
+- Move source for the v2 registry plus a legacy-compatible registry module.
+- Registry deployment preflight that stops publishing before Shelby uploads when
+  the configured module or `Registry` resource is unavailable.
 - Legacy registry fallback so existing v1 Spaces remain discoverable.
 - Discovery API for Spaces, creator pages, access checks, payments, and health.
 - Marketplace-style Discover page with search, filters, sorting, thumbnails, and
@@ -79,13 +82,13 @@ Still in progress:
 
 Primary network: **Shelbynet**
 
-Registry account:
+Configured registry account:
 
 ```text
 0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904
 ```
 
-Active registry module:
+Configured registry module:
 
 ```text
 space_registry_v2
@@ -103,17 +106,11 @@ ShelbyUSD metadata address:
 0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1
 ```
 
-Registry v2 publish transaction:
-
-```text
-0x6eae10281c82ef2e13260df7949854287d4ab808696822822952a7490ff61332
-```
-
-Registry v2 initialize transaction:
-
-```text
-0x1404825580fab926aca5701a4572001ea8528f2bd192798cb8201833817be5fb
-```
+The configured account currently has no published registry module on the live
+Shelbynet ledger. Previous deployment transaction hashes are no longer found
+by the active fullnode, so the registry must be republished and initialized
+before a real on-chain publish can succeed. Oria checks this before starting a
+Shelby upload and will not open a wallet signature request when the check fails.
 
 Production API:
 
@@ -122,9 +119,9 @@ https://oria-queenyeji.vercel.app/api/health
 https://oria-queenyeji.vercel.app/api/spaces
 ```
 
-The production API currently reads `space_registry_v2` first and falls back to
-the legacy `space_registry` module so existing Spaces remain visible while new
-Spaces are registered through v2.
+When the registry is available, the production API reads `space_registry_v2`
+first and falls back to the legacy `space_registry` module so existing Spaces
+remain visible while new Spaces are registered through v2.
 
 ## Product Concepts
 
@@ -305,7 +302,7 @@ VITE_SHELBYNET_API_KEY= # Required for browser uploads on Shelbynet.
 VITE_SHELBY_TESTNET_API_KEY= # Shelby Testnet is retired; kept for legacy config only.
 VITE_SHELBY_LOCATION_HINT=shelbynet-1 # Active Shelbynet write location; optional override.
 
-VITE_ORIA_REGISTRY_ADDRESS=0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904
+VITE_ORIA_REGISTRY_ADDRESS=0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904 # Must be republished on the current Shelbynet ledger.
 VITE_ORIA_REGISTRY_MODULE=space_registry_v2
 VITE_ORIA_LEGACY_REGISTRY_MODULE=space_registry
 VITE_ORIA_PAYMENT_V2=1
@@ -367,6 +364,11 @@ npm run test:e2e
 
 The Move package lives in `move/`.
 
+The previously documented Shelbynet deployment is not present on the current
+ledger. Use an Aptos profile controlled by the registry deployer, then verify
+the module and resource before setting `VITE_ORIA_REGISTRY_ADDRESS` and
+`VITE_ORIA_REGISTRY_MODULE` in Vercel or local `.env`.
+
 Compile:
 
 ```bash
@@ -385,6 +387,13 @@ Initialize v2:
 aptos move run \
   --profile <PROFILE> \
   --function-id <DEPLOYER_ADDRESS>::space_registry_v2::initialize
+```
+
+Verify the deployment with the active fullnode:
+
+```bash
+curl "https://api.shelbynet.shelby.xyz/v1/accounts/<DEPLOYER_ADDRESS>/module/space_registry_v2"
+curl "https://api.shelbynet.shelby.xyz/v1/accounts/<DEPLOYER_ADDRESS>/resource/<DEPLOYER_ADDRESS>%3A%3Aspace_registry_v2%3A%3ARegistry"
 ```
 
 The package keeps a legacy-compatible `space_registry` module and adds

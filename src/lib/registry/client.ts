@@ -1,4 +1,6 @@
 import type { Space, SpaceAccessRule, SpacePaymentCurrency, SpaceVisibility } from "../../types/space";
+import { shelbyNetworks } from "../../config/networks";
+import type { OriaNetwork } from "../../types/network";
 import { hexToBytes } from "../utils/hash";
 
 const APTOS_COIN = "0x1::aptos_coin::AptosCoin";
@@ -29,6 +31,57 @@ function usesPaymentV2(moduleName: string) {
 
 export function hasRegistryConfig() {
   return Boolean(getRegistryAddress());
+}
+
+function registryModuleUrl(network: OriaNetwork, address: string, moduleName: string) {
+  const nodeUrl = shelbyNetworks[network].aptosNodeUrl.replace(/\/$/, "");
+  return `${nodeUrl}/accounts/${encodeURIComponent(address)}/module/${encodeURIComponent(moduleName)}`;
+}
+
+function registryResourceUrl(network: OriaNetwork, address: string, moduleName: string) {
+  const nodeUrl = shelbyNetworks[network].aptosNodeUrl.replace(/\/$/, "");
+  const resourceType = `${address}::${moduleName}::Registry`;
+  return `${nodeUrl}/accounts/${encodeURIComponent(address)}/resource/${encodeURIComponent(resourceType)}`;
+}
+
+async function fetchRegistryEndpoint(url: string) {
+  try {
+    return await fetch(url, {
+      headers: { accept: "application/json" },
+    });
+  } catch {
+    throw new Error("ORIA_REGISTRY_CHECK_FAILED");
+  }
+}
+
+export async function assertRegistryReady(network: OriaNetwork) {
+  const registryAddress = getRegistryAddress();
+  if (!registryAddress) return;
+
+  const registryModule = getRegistryModuleName();
+  const moduleResponse = await fetchRegistryEndpoint(
+    registryModuleUrl(network, registryAddress, registryModule),
+  );
+
+  if (moduleResponse.status === 404) {
+    throw new Error("ORIA_REGISTRY_NOT_DEPLOYED");
+  }
+
+  if (!moduleResponse.ok) {
+    throw new Error("ORIA_REGISTRY_CHECK_FAILED");
+  }
+
+  const resourceResponse = await fetchRegistryEndpoint(
+    registryResourceUrl(network, registryAddress, registryModule),
+  );
+
+  if (resourceResponse.status === 404) {
+    throw new Error("ORIA_REGISTRY_NOT_INITIALIZED");
+  }
+
+  if (!resourceResponse.ok) {
+    throw new Error("ORIA_REGISTRY_CHECK_FAILED");
+  }
 }
 
 function visibilityToCode(visibility: SpaceVisibility) {
