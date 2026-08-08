@@ -12,5 +12,6 @@ export type OriaNetworkConfig = {
   aptosIndexerUrl: string;
   shelbyRpcUrl: string;
   shelbyIndexerUrl: string;
+  shelbyLocationHint?: string;
   description: string;
 };

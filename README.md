@@ -303,6 +303,7 @@ VITE_APTOS_API_KEY=
 VITE_SHELBY_API_KEY=
 VITE_SHELBYNET_API_KEY= # Required for browser uploads on Shelbynet.
 VITE_SHELBY_TESTNET_API_KEY= # Shelby Testnet is retired; kept for legacy config only.
+VITE_SHELBY_LOCATION_HINT=shelbynet-1 # Active Shelbynet write location; optional override.
 
 VITE_ORIA_REGISTRY_ADDRESS=0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904
 VITE_ORIA_REGISTRY_MODULE=space_registry_v2
@@ -327,7 +328,9 @@ Create a client key for `shelbynet` at [geomi.dev](https://geomi.dev/), add it
 to Vercel as `VITE_SHELBYNET_API_KEY` under the Production environment, and
 redeploy. Vite embeds `VITE_*` variables during the build, so changing the
 variable without a new deployment will not update the dApp. Do not use a
-private/server key in the browser.
+private/server key in the browser. New Shelbynet accounts without a location
+preference use `shelbynet-1` as the default write location; override it with
+`VITE_SHELBY_LOCATION_HINT` only when Shelby activates a different location.
 
 ### Run
 

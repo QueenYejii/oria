@@ -12,6 +12,7 @@ export const shelbyNetworks = {
     aptosIndexerUrl: "https://api.shelbynet.shelby.xyz/v1/graphql",
     shelbyRpcUrl: "https://api.shelbynet.shelby.xyz/shelby",
     shelbyIndexerUrl: "https://api.shelbynet.shelby.xyz/v1/graphql",
+    shelbyLocationHint: "shelbynet-1",
     description: "Best for live Shelbynet publishing while the network is actively evolving.",
   },
   testnet: {

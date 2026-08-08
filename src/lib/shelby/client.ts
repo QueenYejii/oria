@@ -32,10 +32,13 @@ export function createShelbyClient(network: OriaNetwork) {
 
   const config = shelbyNetworks[network];
   const apiKey = getShelbyApiKey(network);
+  const env = import.meta.env as Record<string, string | undefined>;
+  const locationHint = normalizeApiKey(env.VITE_SHELBY_LOCATION_HINT) || config.shelbyLocationHint;
 
   return new ShelbyClient({
     network: Network.SHELBYNET,
     apiKey,
+    locationHint,
     rpc: {
       baseUrl: config.shelbyRpcUrl,
       apiKey,
