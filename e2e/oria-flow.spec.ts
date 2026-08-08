@@ -98,7 +98,7 @@ test.beforeEach(async ({ page }) => {
 test("discovers seeded Spaces and opens a public detail page", async ({ page }) => {
   await page.goto("/spaces");
 
-  await expect(page.getByRole("heading", { name: /Discover Shelby-backed drops/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Discover Shelby-backed Spaces/i })).toBeVisible();
   await expect(page.getByText("Public Studio Drop")).toBeVisible();
   await expect(page.getByText("Paid Audio Vault")).toBeVisible();
   await expect(page.getByText("Allowlist Research Pack")).toBeVisible();

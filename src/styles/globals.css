@@ -4854,3 +4854,518 @@ h1 {
     animation: none !important;
   }
 }
+
+/* Page polish: keep the app surfaces compact, aligned, and readable. */
+.collection-page {
+  width: min(1160px, calc(100% - 2rem));
+  padding-block: 4rem 5.5rem;
+}
+
+.collection-heading {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 1.35rem;
+}
+
+.collection-heading h1 {
+  max-width: 13ch;
+  font-size: 3.75rem;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.collection-heading h1 span {
+  white-space: nowrap;
+}
+
+.collection-heading p {
+  max-width: 42ch;
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+.market-stats,
+.creator-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.85rem;
+}
+
+.market-stats article,
+.creator-stats article {
+  min-height: 5.65rem;
+  padding: 0.9rem 1rem;
+}
+
+.market-stats strong,
+.creator-stats strong {
+  font-size: 1.55rem;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.market-filters {
+  grid-template-columns: minmax(0, 1.65fr) repeat(3, minmax(0, 0.8fr));
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+  padding: 0.65rem;
+}
+
+.market-filters input,
+.market-filters select,
+.sales-controls input,
+.sales-controls select {
+  min-height: 2.75rem;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.92rem;
+}
+
+.marketplace-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.marketplace-grid > .space-card:only-child {
+  grid-column: 1 / -1;
+}
+
+.space-card h3 {
+  font-size: 1.65rem;
+}
+
+.space-card p {
+  max-width: 60ch;
+  font-size: 0.94rem;
+}
+
+.empty-state h1,
+.empty-state h2 {
+  max-width: 24ch;
+  font-size: 2.15rem;
+  line-height: 1.05;
+}
+
+.market-empty-state {
+  min-height: 12rem;
+}
+
+.payment-state-card,
+.receipt-panel {
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+  padding: 1rem 1.1rem;
+}
+
+.payment-state-card > div:first-child,
+.receipt-panel > div:first-child {
+  min-width: 0;
+}
+
+.payment-state-card p,
+.receipt-panel p {
+  max-width: 64ch;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.payment-state-card strong,
+.receipt-panel strong {
+  font-size: 1.3rem;
+  line-height: 1.15;
+}
+
+.receipt-command-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 11.5rem;
+  gap: 0.7rem;
+  margin: 0.9rem 0 1.2rem;
+}
+
+.receipt-command-panel article,
+.receipt-command-link {
+  min-height: 7.35rem;
+  padding: 0.95rem 1rem;
+}
+
+.receipt-command-panel strong {
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.receipt-command-panel p {
+  max-width: 38ch;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.payment-section-heading {
+  margin: 1.7rem 0 0.85rem;
+}
+
+.payment-section-heading h2,
+.creator-space-heading h2,
+.section-label h2 {
+  font-size: 2.45rem;
+  line-height: 1;
+}
+
+.payment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.28fr);
+  align-items: center;
+  gap: 1.25rem;
+  min-height: 6.2rem;
+  padding: 1rem 1.1rem;
+}
+
+.payment-row h2 {
+  max-width: 34ch;
+  margin-top: 0.55rem;
+  font-size: 1.55rem;
+  line-height: 1.1;
+}
+
+.payment-row > div:last-child {
+  min-width: 11rem;
+  justify-self: end;
+}
+
+.payment-row strong {
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sales-controls {
+  grid-template-columns: minmax(0, 1fr) 12rem;
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+  padding: 0.65rem;
+}
+
+.space-revenue-panel {
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+  padding: 1rem;
+}
+
+.space-revenue-panel .section-label h2 {
+  max-width: none;
+  font-size: 2rem;
+  text-align: left;
+}
+
+.space-revenue-row {
+  min-height: 3.8rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.space-revenue-row b {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.creator-hero {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  margin-bottom: 1.35rem;
+  padding: 1.35rem 1.5rem;
+}
+
+.creator-identity {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1.2rem;
+}
+
+.creator-avatar {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 1.25rem;
+}
+
+.creator-bio {
+  min-width: 0;
+}
+
+.creator-hero h1 {
+  max-width: 100%;
+  margin-top: 0.55rem;
+  overflow: hidden;
+  font-size: 3.1rem;
+  line-height: 0.96;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.creator-hero p {
+  max-width: 52ch;
+  margin-top: 0.65rem;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.creator-address-row {
+  width: min(100%, 38rem);
+  margin-top: 0.8rem;
+}
+
+.creator-socials {
+  margin-top: 0.8rem;
+}
+
+.creator-socials a {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.creator-presence-strip {
+  margin-top: 0.8rem;
+}
+
+.creator-actions {
+  align-content: center;
+  max-width: 22rem;
+}
+
+.creator-showcase {
+  grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 0.85fr));
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+
+.creator-showcase article {
+  min-height: 8.5rem;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem;
+}
+
+.creator-showcase strong {
+  font-size: 1.7rem;
+  line-height: 1.05;
+}
+
+.creator-showcase p {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.creator-stats {
+  margin-bottom: 0.8rem;
+}
+
+.creator-space-heading {
+  margin: 1.4rem 0 0.85rem;
+}
+
+@media (min-width: 921px) {
+  .collection-heading {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr);
+    column-gap: 4.25rem;
+    align-items: end;
+  }
+
+  .collection-heading .eyebrow,
+  .collection-heading h1 {
+    grid-column: 1;
+  }
+
+  .collection-heading p {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: end;
+    margin-bottom: 0.25rem;
+  }
+
+  .sales-page .collection-heading h1,
+  .payment-page .collection-heading h1 {
+    max-width: 11ch;
+    font-size: 3.6rem;
+  }
+
+  .creator-page .creator-hero h1 {
+    font-size: 3.1rem;
+  }
+}
+
+@media (max-width: 920px) {
+  .collection-page {
+    width: min(100% - 2rem, 760px);
+    padding-block: 3.25rem 4.5rem;
+  }
+
+  .collection-heading h1 {
+    max-width: 18ch;
+    font-size: 3.15rem;
+  }
+
+  .collection-heading p {
+    max-width: 58ch;
+  }
+
+  .market-stats,
+  .creator-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .market-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .market-filters .search-field {
+    grid-column: 1 / -1;
+  }
+
+  .marketplace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-command-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receipt-command-link {
+    grid-column: 1 / -1;
+    min-height: 3.5rem;
+  }
+
+  .payment-row {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .payment-row > div:last-child {
+    min-width: 0;
+    justify-self: stretch;
+    justify-items: start;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .sales-controls {
+    grid-template-columns: 1fr 12rem;
+  }
+
+  .creator-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-actions {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .creator-showcase {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .creator-showcase article:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .collection-page {
+    width: min(100% - 1.25rem, 560px);
+    padding-block: 2.75rem 4rem;
+  }
+
+  .collection-heading {
+    gap: 0.55rem;
+    margin-bottom: 1rem;
+  }
+
+  .collection-heading h1,
+  .sales-page .collection-heading h1,
+  .payment-page .collection-heading h1 {
+    max-width: 18ch;
+    font-size: 2.55rem;
+  }
+
+  .collection-heading p {
+    font-size: 0.92rem;
+  }
+
+  .market-stats,
+  .creator-stats {
+    gap: 0.55rem;
+  }
+
+  .market-stats article,
+  .creator-stats article {
+    min-height: 5rem;
+    padding: 0.75rem;
+  }
+
+  .market-stats strong,
+  .creator-stats strong {
+    font-size: 1.28rem;
+  }
+
+  .market-filters,
+  .sales-controls,
+  .receipt-command-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .market-filters .search-field,
+  .receipt-command-link {
+    grid-column: auto;
+  }
+
+  .payment-section-heading h2,
+  .creator-space-heading h2,
+  .section-label h2 {
+    font-size: 2rem;
+  }
+
+  .payment-section-heading,
+  .creator-space-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .payment-row {
+    padding: 0.9rem;
+  }
+
+  .payment-row h2 {
+    font-size: 1.35rem;
+  }
+
+  .creator-hero {
+    padding: 1rem;
+  }
+
+  .creator-identity {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-avatar {
+    width: 4.75rem;
+    height: 4.75rem;
+  }
+
+  .creator-hero h1 {
+    max-width: 100%;
+    font-size: 2.45rem;
+  }
+
+  .creator-actions,
+  .creator-actions .button {
+    width: 100%;
+  }
+
+  .creator-showcase {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-showcase article:first-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .market-stats,
+  .creator-stats {
+    grid-template-columns: 1fr;
+  }
+}

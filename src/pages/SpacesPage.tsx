@@ -66,7 +66,9 @@ export function SpacesPage() {
       <main className="collection-page">
         <section className="collection-heading">
           <p className="eyebrow">Spaces</p>
-          <h1>Discover Shelby-backed Spaces.</h1>
+          <h1>
+            Discover <span>Shelby-backed</span> Spaces.
+          </h1>
           <p>
             Browse public releases, paid unlocks, creator archives, and large-media bundles published
             on the active Shelby network.
