@@ -33,10 +33,9 @@ paid downloads.
 
 ## Current Status
 
-Oria is in **Shelbynet development**. The frontend is deployed on Vercel and
-the discovery API is available through Vercel serverless routes. The Move
-registry source is included in this repository; its active deployment must be
-verified against the current Shelbynet ledger before on-chain publishing.
+Oria is in **Shelbynet development**. The frontend is deployed on Vercel, the
+discovery API is available through Vercel serverless routes, and the Move
+registry is deployed and initialized on the current Shelbynet ledger.
 
 Implemented:
 
@@ -106,11 +105,14 @@ ShelbyUSD metadata address:
 0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1
 ```
 
-The configured account currently has no published registry module on the live
-Shelbynet ledger. Previous deployment transaction hashes are no longer found
-by the active fullnode, so the registry must be republished and initialized
-before a real on-chain publish can succeed. Oria checks this before starting a
-Shelby upload and will not open a wallet signature request when the check fails.
+The registry is deployed and initialized on the current Shelbynet ledger. The
+latest publish transaction is
+`0xda59f73af76f36fd78a38c380706d523744f04432f23899596874deb74e3107c` and the
+v2 initialize transaction is
+`0x4708566945243f3eaa06df140a9805f43d9b95c9fd96b0874cb41d7879c30d95`.
+Oria still checks the module and `Registry` resource before starting a Shelby
+upload, so a future network reset fails safely instead of opening a bad wallet
+signature request.
 
 Production API:
 
@@ -119,9 +121,9 @@ https://oria-queenyeji.vercel.app/api/health
 https://oria-queenyeji.vercel.app/api/spaces
 ```
 
-When the registry is available, the production API reads `space_registry_v2`
-first and falls back to the legacy `space_registry` module so existing Spaces
-remain visible while new Spaces are registered through v2.
+The production API reads `space_registry_v2` first and falls back to the legacy
+`space_registry` module so existing Spaces remain visible while new Spaces are
+registered through v2.
 
 ## Product Concepts
 
@@ -302,7 +304,7 @@ VITE_SHELBYNET_API_KEY= # Required for browser uploads on Shelbynet.
 VITE_SHELBY_TESTNET_API_KEY= # Shelby Testnet is retired; kept for legacy config only.
 VITE_SHELBY_LOCATION_HINT=shelbynet-1 # Active Shelbynet write location; optional override.
 
-VITE_ORIA_REGISTRY_ADDRESS=0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904 # Must be republished on the current Shelbynet ledger.
+VITE_ORIA_REGISTRY_ADDRESS=0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904 # Active Shelbynet registry account.
 VITE_ORIA_REGISTRY_MODULE=space_registry_v2
 VITE_ORIA_LEGACY_REGISTRY_MODULE=space_registry
 VITE_ORIA_PAYMENT_V2=1
@@ -364,10 +366,11 @@ npm run test:e2e
 
 The Move package lives in `move/`.
 
-The previously documented Shelbynet deployment is not present on the current
-ledger. Use an Aptos profile controlled by the registry deployer, then verify
-the module and resource before setting `VITE_ORIA_REGISTRY_ADDRESS` and
-`VITE_ORIA_REGISTRY_MODULE` in Vercel or local `.env`.
+The active Shelbynet deployment uses the registry deployer account shown above.
+If Shelbynet resets again, use an Aptos profile controlled by that deployer,
+then verify the module and resource before setting
+`VITE_ORIA_REGISTRY_ADDRESS` and `VITE_ORIA_REGISTRY_MODULE` in Vercel or local
+`.env`.
 
 Compile:
 
