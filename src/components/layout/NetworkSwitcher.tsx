@@ -4,7 +4,9 @@ import type { OriaNetwork } from "../../types/network";
 
 export function NetworkSwitcher() {
   const { activeNetwork, setActiveNetwork } = useActiveNetwork();
-  const networkIds = Object.keys(shelbyNetworks) as OriaNetwork[];
+  const networkIds = (Object.keys(shelbyNetworks) as OriaNetwork[]).filter(
+    (networkId) => shelbyNetworks[networkId].available,
+  );
 
   return (
     <div className="network-pill" aria-label="Active network options">

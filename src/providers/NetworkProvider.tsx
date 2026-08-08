@@ -10,10 +10,7 @@ type NetworkContextValue = {
 
 export const NetworkContext = createContext<NetworkContextValue | null>(null);
 
-const initialNetwork = (() => {
-  const value = import.meta.env.VITE_DEFAULT_ORIA_NETWORK;
-  return value === "testnet" ? "testnet" : "shelbynet";
-})();
+const initialNetwork = "shelbynet" as const;
 
 export function NetworkProvider({ children }: PropsWithChildren) {
   const [activeNetwork, setActiveNetwork] = useState<OriaNetwork>(initialNetwork);

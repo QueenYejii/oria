@@ -3,11 +3,6 @@ import { ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { shelbyNetworks } from "../../config/networks";
 import type { OriaNetwork } from "../../types/network";
 
-const sdkNetworkByOriaNetwork = {
-  testnet: Network.TESTNET,
-  shelbynet: Network.SHELBYNET,
-} as const satisfies Record<OriaNetwork, Network>;
-
 const networkApiKeyEnv = {
   shelbynet: "VITE_SHELBYNET_API_KEY",
   testnet: "VITE_SHELBY_TESTNET_API_KEY",
@@ -31,11 +26,15 @@ export function hasShelbyApiKey(network: OriaNetwork) {
 }
 
 export function createShelbyClient(network: OriaNetwork) {
+  if (network !== "shelbynet") {
+    throw new Error("Shelby Testnet has been retired. Switch Oria to Shelbynet to publish or retrieve blobs.");
+  }
+
   const config = shelbyNetworks[network];
   const apiKey = getShelbyApiKey(network);
 
   return new ShelbyClient({
-    network: sdkNetworkByOriaNetwork[network],
+    network: Network.SHELBYNET,
     apiKey,
     rpc: {
       baseUrl: config.shelbyRpcUrl,

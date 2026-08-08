@@ -5,8 +5,8 @@ Aptos. It turns large files, archives, previews, datasets, and paid drops into
 clean shareable Spaces stored on Shelby and anchored through an Aptos registry.
 
 Oria is currently focused on **Shelbynet**. The app is not finished 100% yet and
-is still under active development, but the core testnet product flow is live and
-usable for serious early testing.
+is still under active development, but the core Shelbynet product flow is live
+and usable for serious early testing.
 
 Live app: https://oria-queenyeji.vercel.app  
 Repository: https://github.com/QueenYejii/oria
@@ -33,7 +33,7 @@ paid downloads.
 
 ## Current Status
 
-Oria is in **Shelbynet production/testnet development**. The frontend is deployed
+Oria is in **Shelbynet development**. The frontend is deployed
 on Vercel, the registry is deployed on Shelbynet, and the discovery API is active
 through Vercel serverless routes.
 
@@ -43,7 +43,8 @@ Implemented:
 - Aptos wallet adapter integration.
 - Shelby Protocol SDK integration.
 - Shelbynet-first network flow.
-- Shelby Testnet option kept available for future early-access validation.
+- Shelbynet is the active publishing network; retired testnet records remain in
+  the data schema for migration only.
 - File upload to Shelby blobs.
 - Manifest generation, upload, hashing, and versioning.
 - Public, wallet-gated, and paid Space modes.
@@ -72,7 +73,7 @@ Still in progress:
 - Stronger indexing/cache strategy for larger community scale.
 - More complete creator analytics and sales reporting.
 - More granular on-chain access policies such as token or NFT ownership.
-- Shelby Testnet validation after early access is approved.
+- Continued Shelbynet validation as the network evolves.
 
 ## Live Network State
 
@@ -301,7 +302,7 @@ VITE_DEFAULT_ORIA_NETWORK=shelbynet
 VITE_APTOS_API_KEY=
 VITE_SHELBY_API_KEY=
 VITE_SHELBYNET_API_KEY= # Required for browser uploads on Shelbynet.
-VITE_SHELBY_TESTNET_API_KEY= # Required when switching to Shelby Testnet.
+VITE_SHELBY_TESTNET_API_KEY= # Shelby Testnet is retired; kept for legacy config only.
 
 VITE_ORIA_REGISTRY_ADDRESS=0xf8430410ed52de75e5311a4c8401cafb4b627eaf92c4f99bfb22ce1946407904
 VITE_ORIA_REGISTRY_MODULE=space_registry_v2
@@ -481,7 +482,7 @@ Short-term priorities:
 
 Medium-term priorities:
 
-- Validate Shelby Testnet after early access approval.
+- Keep validating the active Shelbynet integration as protocol endpoints evolve.
 - Add richer creator identity and profile indexing.
 - Add token/NFT-based access rules.
 - Add creator analytics dashboard.

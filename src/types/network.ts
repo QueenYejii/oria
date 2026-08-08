@@ -6,6 +6,7 @@ export type OriaNetworkConfig = {
   id: OriaNetwork;
   label: string;
   mode: string;
+  available: boolean;
   aptosNetwork: Network;
   aptosNodeUrl: string;
   aptosIndexerUrl: string;
