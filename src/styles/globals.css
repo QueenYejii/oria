@@ -32,10 +32,29 @@
   --radius-md: 1rem;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-fast: 100ms;
+  --motion-normal: 200ms;
   color-scheme: light;
   font-family: var(--font-body);
   font-kerning: normal;
   font-feature-settings: "kern" 1, "liga" 1;
+}
+
+:root[data-theme="dark"] {
+  --ink: lab(96% 1 0);
+  --ink-soft: lab(74% 2 1);
+  --paper: lab(12% 1 0);
+  --paper-deep: lab(18% 1 0);
+  --mist: lab(15% 1 0);
+  --surface: lab(15% 1 0);
+  --surface-soft: var(--paper);
+  --surface-raised: lab(21% 1 0);
+  --line: lab(34% 1 0);
+  --line-soft: color-mix(in srgb, var(--line) 76%, transparent);
+  --shadow: 0 16px 34px rgb(0 0 0 / 32%);
+  --shadow-soft: 0 8px 20px rgb(0 0 0 / 24%);
+  --shadow-lift: 0 18px 38px rgb(0 0 0 / 36%);
+  color-scheme: dark;
 }
 
 * {
@@ -53,6 +72,8 @@ body {
   background: var(--paper);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
+  transition: background-color var(--motion-normal, 200ms) ease,
+    color var(--motion-normal, 200ms) ease;
 }
 
 :where(a, button, input, textarea, select, summary):focus-visible {
@@ -7119,5 +7140,121 @@ h3 {
 @media (max-width: 380px) {
   .brand > span:not(.brand-mark) {
     display: none;
+  }
+}
+
+/* Wide desktop hero scale and shared theme control. */
+@media (min-width: 1600px) {
+  .hero {
+    width: min(1600px, calc(100% - 6rem));
+    gap: 3rem;
+    padding-block: 7rem 6rem;
+  }
+
+  .hero-copy {
+    width: min(100%, 78rem);
+    max-width: 78rem;
+    gap: 1.75rem;
+  }
+
+  .hero h1 {
+    max-width: 18ch;
+    font-size: 5.5rem;
+  }
+
+  .hero-lede {
+    max-width: 58rem;
+    font-size: 1.25rem;
+  }
+
+  .hero-proof {
+    max-width: 70rem;
+  }
+
+  .hero-proof span {
+    min-height: 6rem;
+    padding: 1.15rem 1.4rem;
+    font-size: 0.9375rem;
+  }
+
+  .hero-proof strong {
+    font-size: 2rem;
+  }
+
+  .hero-note {
+    max-width: 54rem;
+    font-size: 1.0625rem;
+  }
+
+  .hero-signal-rail {
+    max-width: 66rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  .hero-copy {
+    gap: 1.9rem;
+  }
+
+  .hero h1 {
+    max-width: 19ch;
+    font-size: 6rem;
+  }
+
+  .hero-lede {
+    max-width: 62rem;
+    font-size: 1.3rem;
+  }
+
+  .hero-proof strong {
+    font-size: 2.15rem;
+  }
+}
+
+.theme-toggle {
+  display: inline-grid;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  color: var(--ink-soft);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: color var(--motion-normal, 200ms) ease,
+    background-color var(--motion-normal, 200ms) ease,
+    border-color var(--motion-normal, 200ms) ease,
+    transform var(--motion-fast, 100ms) ease;
+}
+
+.theme-toggle:hover {
+  color: var(--ink);
+  background: var(--paper-deep);
+  border-color: var(--ink-soft);
+}
+
+.theme-toggle:active {
+  transform: translateY(1px);
+}
+
+.theme-toggle[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--paper-deep);
+}
+
+:root[data-theme="dark"] .file-icon,
+:root[data-theme="dark"] .drop-sigil {
+  color: var(--surface-raised);
+  background: var(--ink);
+}
+
+@media (max-width: 620px) {
+  .theme-toggle {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
   }
 }
