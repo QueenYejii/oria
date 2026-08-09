@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { ProductPreview } from "./ProductPreview";
 
 export function Hero() {
   return (
@@ -52,8 +51,6 @@ export function Hero() {
           <span>Creator receipts</span>
         </div>
       </div>
-
-      <ProductPreview />
     </section>
   );
 }
