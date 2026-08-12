@@ -75,6 +75,27 @@ describe("resolveSpaceAccess", () => {
     ).toBe(true);
   });
 
+  it("keeps a connected waitlisted wallet locked with a clear reason", () => {
+    const space = {
+      ...baseSpace,
+      visibility: "wallet_gated" as const,
+      access: { rule: "allowlist" as const, allowlist: ["0xallowed"] },
+    };
+
+    expect(
+      resolveSpaceAccess({
+        space,
+        viewer: "0xwaitlisted",
+        trustExternalAccessState: true,
+        isAllowlisted: false,
+      }),
+    ).toEqual({
+      status: "locked",
+      canDownload: false,
+      reason: "This wallet is not on the creator's allowlist yet.",
+    });
+  });
+
   it("does not unlock paid Spaces without verified purchase state", () => {
     const space = {
       ...baseSpace,

@@ -26,10 +26,10 @@ const STORAGE_EVENT = "oria-payments-updated";
 function readRecords(): LocalPaymentRecord[] {
   if (typeof window === "undefined") return [];
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-
   try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -58,6 +58,26 @@ export function hasLocalPayment(params: {
       record.spaceId === params.spaceId &&
       record.network === params.network &&
       record.payer.toLowerCase() === payer,
+  );
+}
+
+export function getLocalPayment(params: {
+  spaceId: string;
+  network: OriaNetwork;
+  payer?: string;
+}) {
+  if (!params.payer) return null;
+  const payer = params.payer.toLowerCase();
+
+  return (
+    readRecords()
+      .filter(
+        (record) =>
+          record.spaceId === params.spaceId &&
+          record.network === params.network &&
+          record.payer.toLowerCase() === payer,
+      )
+      .sort((a, b) => b.paidAt - a.paidAt)[0] ?? null
   );
 }
 

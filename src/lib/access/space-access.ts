@@ -54,6 +54,6 @@ export function resolveSpaceAccess(params: {
         ? "Pay the creator to unlock downloads."
         : params.space.access.rule === "creator_only"
           ? "Only the creator can download this Space."
-          : "This Space is allowlist-gated by its creator.",
+          : "This wallet is not on the creator's allowlist yet.",
   };
 }

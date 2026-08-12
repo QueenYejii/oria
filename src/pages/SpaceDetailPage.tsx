@@ -5,11 +5,13 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SpaceFileList } from "../components/spaces/SpaceFileList";
 import { SpacePreview } from "../components/spaces/SpacePreview";
-import { createPaymentReceiptId, hasLocalPayment, mirrorPaymentReceipt, saveLocalPayment, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
+import { WALLET_MENU_OPEN_EVENT } from "../lib/wallet/events";
+import { createPaymentReceiptId, getLocalPayment, mirrorPaymentReceipt, saveLocalPayment, subscribeToPayments, type LocalPaymentRecord } from "../lib/access/payments";
 import { resolveSpaceAccess } from "../lib/access/space-access";
 import { getRegistryAccess, type RegistryAccessRecord } from "../lib/discovery/client";
 import {
   getPaymentAssetAddress,
+  getRegistryAccessOnChain,
   hasRegistryConfig,
   isPaymentV2Enabled,
   purchaseSpaceOnChain,
@@ -44,6 +46,8 @@ export function SpaceDetailPage() {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentTick, setPaymentTick] = useState(0);
   const [registryAccess, setRegistryAccess] = useState<RegistryAccessRecord | null>(null);
+  const [registryAccessError, setRegistryAccessError] = useState<string | null>(null);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdatingManifest, setIsUpdatingManifest] = useState(false);
@@ -67,11 +71,17 @@ export function SpaceDetailPage() {
   );
   const uploadBlobs = useUploadBlobs({ client: shelbyClient });
   const isOwner = Boolean(space && viewer && space.creator.toLowerCase() === viewer.toLowerCase());
+  const localPayment = useMemo(
+    () =>
+      space
+        ? getLocalPayment({ spaceId: space.id, network: space.network, payer: viewer })
+        : null,
+    [space?.id, space?.network, viewer, paymentTick],
+  );
   const hasPaid = space
     ? hasOnChainRegistry
-      ? Boolean(registryAccess?.hasPurchased)
-      : registryAccess?.hasPurchased ||
-        hasLocalPayment({ spaceId: space.id, network: space.network, payer: viewer })
+      ? Boolean(registryAccess?.hasPurchased || localPayment?.chainStatus === "verified")
+      : Boolean(registryAccess?.hasPurchased || localPayment)
     : false;
   const access = space
     ? resolveSpaceAccess({
@@ -102,20 +112,57 @@ export function SpaceDetailPage() {
   useEffect(() => subscribeToPayments(() => setPaymentTick((tick) => tick + 1)), []);
 
   useEffect(() => {
+    setPaymentReceipt(localPayment);
+  }, [localPayment]);
+
+  useEffect(() => {
     if (!space || !viewer) {
       setRegistryAccess(null);
+      setRegistryAccessError(null);
+      setIsCheckingAccess(false);
       return;
     }
 
     let cancelled = false;
+    setIsCheckingAccess(true);
+    setRegistryAccessError(null);
+    const currentSpace = space;
+    const currentViewer = viewer;
 
-    getRegistryAccess(space.id, viewer)
-      .then((record) => {
-        if (!cancelled) setRegistryAccess(record);
-      })
-      .catch(() => {
-        if (!cancelled) setRegistryAccess(null);
-      });
+    async function loadAccess() {
+      try {
+        const onChainAccess = await getRegistryAccessOnChain({
+          space: {
+            id: currentSpace.id,
+            network: currentSpace.network,
+            registryModule: currentSpace.registryModule,
+          },
+          wallet: currentViewer,
+        });
+
+        if (onChainAccess) {
+          if (!cancelled) setRegistryAccess(onChainAccess);
+          return;
+        }
+
+        const apiAccess = await getRegistryAccess(currentSpace.id, currentViewer);
+        if (!cancelled) setRegistryAccess(apiAccess);
+      } catch (onChainError) {
+        try {
+          const apiAccess = await getRegistryAccess(currentSpace.id, currentViewer);
+          if (!cancelled) setRegistryAccess(apiAccess);
+        } catch (apiError) {
+          if (!cancelled) {
+            setRegistryAccess(null);
+            setRegistryAccessError(getErrorMessage(apiError ?? onChainError));
+          }
+        }
+      } finally {
+        if (!cancelled) setIsCheckingAccess(false);
+      }
+    }
+
+    loadAccess();
 
     return () => {
       cancelled = true;
@@ -627,16 +674,49 @@ export function SpaceDetailPage() {
                 <span className="tiny-label">Access</span>
                 <strong>{access?.canDownload ? "Downloads unlocked" : "Downloads locked"}</strong>
                 <p>{access?.reason}</p>
+                {registryAccessError && (
+                  <p className="form-error">
+                    Live access verification is unavailable. Try checking wallet access again.
+                  </p>
+                )}
               </div>
               <div className="access-actions">
                 {space.visibility === "paid" && !access?.canDownload && (
                   <button
                     className="button primary"
                     type="button"
-                    disabled={!wallet.connected || isPaying}
-                    onClick={unlockPaidSpace}
+                    disabled={isPaying}
+                    onClick={() => {
+                      if (!wallet.connected) {
+                        window.dispatchEvent(new Event(WALLET_MENU_OPEN_EVENT));
+                        return;
+                      }
+
+                      unlockPaidSpace();
+                    }}
                   >
-                    {isPaying ? "Confirming..." : "Pay to unlock"}
+                    {isPaying ? "Confirming..." : wallet.connected ? "Pay to unlock" : "Connect wallet"}
+                  </button>
+                )}
+                {space.visibility === "wallet_gated" && !access?.canDownload && (
+                  <button
+                    className="button primary"
+                    type="button"
+                    disabled={isCheckingAccess}
+                    onClick={() => {
+                      if (!wallet.connected) {
+                        window.dispatchEvent(new Event(WALLET_MENU_OPEN_EVENT));
+                        return;
+                      }
+
+                      setPaymentTick((tick) => tick + 1);
+                    }}
+                  >
+                    {!wallet.connected
+                      ? "Connect wallet"
+                      : isCheckingAccess
+                        ? "Checking access..."
+                        : "Check wallet access"}
                   </button>
                 )}
                 <button
@@ -660,8 +740,20 @@ export function SpaceDetailPage() {
                   <strong>Wallet confirmation did not complete.</strong>
                   <p>{paymentError}</p>
                 </div>
-                <button className="button secondary" type="button" disabled={!wallet.connected || isPaying} onClick={unlockPaidSpace}>
-                  Retry unlock
+                <button
+                  className="button secondary"
+                  type="button"
+                  disabled={isPaying}
+                  onClick={() => {
+                    if (!wallet.connected) {
+                      window.dispatchEvent(new Event(WALLET_MENU_OPEN_EVENT));
+                      return;
+                    }
+
+                    unlockPaidSpace();
+                  }}
+                >
+                  {!wallet.connected ? "Connect wallet" : "Retry unlock"}
                 </button>
               </section>
             )}

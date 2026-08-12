@@ -1,9 +1,10 @@
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import type { AdapterNotDetectedWallet, AdapterWallet } from "@aptos-labs/wallet-adapter-core";
 import { WalletReadyState } from "@aptos-labs/wallet-adapter-core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getAccountAddress } from "../../lib/wallet/address";
 import { shortenAddress } from "../../lib/utils/format";
+import { WALLET_MENU_OPEN_EVENT } from "../../lib/wallet/events";
 
 function isDetectedWallet(wallet: AdapterWallet | AdapterNotDetectedWallet): wallet is AdapterWallet {
   return wallet.readyState === WalletReadyState.Installed;
@@ -23,6 +24,14 @@ export function WalletConnect() {
   const wallet = useWallet();
   const [open, setOpen] = useState(false);
   const [connectingWallet, setConnectingWallet] = useState<string | null>(null);
+
+  useEffect(() => {
+    const openWalletMenu = () => setOpen(true);
+    window.addEventListener(WALLET_MENU_OPEN_EVENT, openWalletMenu);
+
+    return () => window.removeEventListener(WALLET_MENU_OPEN_EVENT, openWalletMenu);
+  }, []);
+
   const address = getAccountAddress(wallet.account);
   const wallets = [...wallet.wallets, ...wallet.notDetectedWallets].sort((a, b) => {
     const aInstalled = a.readyState === WalletReadyState.Installed ? 0 : 1;

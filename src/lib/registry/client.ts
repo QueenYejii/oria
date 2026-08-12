@@ -33,6 +33,11 @@ export function hasRegistryConfig() {
   return Boolean(getRegistryAddress());
 }
 
+export type RegistryAccessState = {
+  hasPurchased: boolean;
+  isAllowlisted: boolean;
+};
+
 function registryModuleUrl(network: OriaNetwork, address: string, moduleName: string) {
   const nodeUrl = shelbyNetworks[network].aptosNodeUrl.replace(/\/$/, "");
   return `${nodeUrl}/accounts/${encodeURIComponent(address)}/module/${encodeURIComponent(moduleName)}`;
@@ -42,6 +47,104 @@ function registryResourceUrl(network: OriaNetwork, address: string, moduleName: 
   const nodeUrl = shelbyNetworks[network].aptosNodeUrl.replace(/\/$/, "");
   const resourceType = `${address}::${moduleName}::Registry`;
   return `${nodeUrl}/accounts/${encodeURIComponent(address)}/resource/${encodeURIComponent(resourceType)}`;
+}
+
+function registryViewUrl(network: OriaNetwork) {
+  const nodeUrl = shelbyNetworks[network].aptosNodeUrl.replace(/\/$/, "");
+  return `${nodeUrl}/view`;
+}
+
+async function readRegistryBooleanView(params: {
+  network: OriaNetwork;
+  moduleName: string;
+  functionName: "has_purchase" | "is_allowlisted";
+  arguments: string[];
+}) {
+  const registryAddress = getRegistryAddress();
+  if (!registryAddress) throw new Error("ORIA_REGISTRY_NOT_CONFIGURED");
+
+  const response = await fetch(registryViewUrl(params.network), {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      function: `${registryAddress}::${params.moduleName}::${params.functionName}`,
+      type_arguments: [],
+      arguments: [registryAddress, ...params.arguments],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`ORIA_REGISTRY_VIEW_FAILED_${response.status}`);
+  }
+
+  const payload = (await response.json()) as unknown;
+  const value = Array.isArray(payload) ? payload[0] : undefined;
+
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.toLowerCase() === "true";
+
+  throw new Error("ORIA_REGISTRY_VIEW_INVALID_RESPONSE");
+}
+
+function getRegistryModuleCandidates(space?: Pick<Space, "registryModule">) {
+  const primary = getSpaceRegistryModule(space);
+  const configuredLegacy = import.meta.env.VITE_ORIA_LEGACY_REGISTRY_MODULE as string | undefined;
+
+  return Array.from(
+    new Set(
+      [primary, configuredLegacy].filter(
+        (moduleName): moduleName is string => Boolean(moduleName),
+      ),
+    ),
+  );
+}
+
+export async function getRegistryAccessOnChain(params: {
+  space: Pick<Space, "id" | "network" | "registryModule">;
+  wallet: string;
+}): Promise<RegistryAccessState | null> {
+  if (!getRegistryAddress() || !params.wallet) return null;
+
+  const accessStates: RegistryAccessState[] = [];
+  let lastError: unknown = null;
+
+  for (const moduleName of getRegistryModuleCandidates(params.space)) {
+    try {
+      const [hasPurchased, isAllowlisted] = await Promise.all([
+        readRegistryBooleanView({
+          network: params.space.network,
+          moduleName,
+          functionName: "has_purchase",
+          arguments: [params.space.id, params.wallet],
+        }),
+        readRegistryBooleanView({
+          network: params.space.network,
+          moduleName,
+          functionName: "is_allowlisted",
+          arguments: [params.space.id, params.wallet],
+        }),
+      ]);
+
+      accessStates.push({ hasPurchased, isAllowlisted });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (!accessStates.length) {
+    throw lastError instanceof Error ? lastError : new Error("ORIA_REGISTRY_VIEW_FAILED");
+  }
+
+  return accessStates.reduce(
+    (merged, state) => ({
+      hasPurchased: merged.hasPurchased || state.hasPurchased,
+      isAllowlisted: merged.isAllowlisted || state.isAllowlisted,
+    }),
+    { hasPurchased: false, isAllowlisted: false },
+  );
 }
 
 async function fetchRegistryEndpoint(url: string) {
