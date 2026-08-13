@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { ArrowUpRight, FileDown, RefreshCw, ReceiptText } from "lucide-react";
 import { AppHeader } from "../components/layout/AppHeader";
-import { getCreatorSales, type CreatorSaleRecord } from "../lib/access/sales";
+import { getCreatorSales, getRevenueByCurrency, type CreatorSaleRecord, type CreatorSalesPayload } from "../lib/access/sales";
 import { getSpace } from "../lib/spaces/local-store";
 import { getTransactionExplorerUrl } from "../lib/utils/explorer";
 import { formatDateTime, formatPaymentAmount, shortenAddress } from "../lib/utils/format";
@@ -9,6 +10,26 @@ import { getAccountAddress } from "../lib/wallet/address";
 import { useActiveNetwork } from "../hooks/useActiveNetwork";
 import { useSpaces } from "../hooks/useSpaces";
 import { useEffect, useMemo, useState } from "react";
+
+type SalesLoadState = "idle" | "loading" | "ready" | "unavailable" | "error";
+
+function sourceLabel(payload: CreatorSalesPayload | null) {
+  if (!payload) return "Not connected";
+  if (payload.source === "registry_purchases_table_direct") return "Registry direct";
+  if (payload.source === "registry_purchases_table_with_tx_scan") return "Registry + tx scan";
+  return payload.receiptStore?.persistent ? "Registry + persistent mirror" : "Registry + receipt mirror";
+}
+
+function sourceDescription(payload: CreatorSalesPayload | null, state: SalesLoadState) {
+  if (state === "idle") return "Connect the creator wallet to read paid unlocks for this account.";
+  if (state === "loading") return "Reading the active registry and matching verified purchase receipts.";
+  if (state === "unavailable") return "Revenue is not confirmed because no registry or Discovery API source is available.";
+  if (state === "error") return "The seller source could not be read. Retry after the network or API is available.";
+  if (payload?.source === "registry_purchases_table_direct") {
+    return "Read-only fullnode data from the active registry. Amounts use the registered Space price.";
+  }
+  return "Registry buyers are combined with verified transaction and receipt data when available.";
+}
 
 function saleTimestamp(sale: CreatorSaleRecord) {
   if (sale.paidAt) return sale.paidAt;
@@ -26,8 +47,12 @@ export function SalesPage() {
   const { activeNetwork } = useActiveNetwork();
   const spaces = useSpaces(address ? { creator: address, network: activeNetwork } : { network: activeNetwork });
   const [sales, setSales] = useState<CreatorSaleRecord[]>([]);
+  const [payload, setPayload] = useState<CreatorSalesPayload | null>(null);
   const [storeMode, setStoreMode] = useState("registry");
   const [error, setError] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<SalesLoadState>("idle");
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState("newest");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -35,23 +60,33 @@ export function SalesPage() {
   useEffect(() => {
     if (!address) {
       setSales([]);
+      setPayload(null);
       setError(null);
-      setIsSyncing(false);
+      setLoadState("idle");
+      setLastSyncedAt(null);
       return;
     }
 
     let cancelled = false;
     setIsSyncing(true);
-    getCreatorSales(address)
+    setLoadState("loading");
+    getCreatorSales(address, activeNetwork)
       .then((payload) => {
         if (cancelled) return;
-        setSales((payload?.sales ?? []).filter((sale) => sale.network === activeNetwork));
-        setStoreMode(payload?.receiptStore?.persistent ? "Persistent mirror" : "Registry + local mirror");
-        setError(null);
+        const nextSales = (payload?.sales ?? []).filter((sale) => sale.network === activeNetwork);
+        setPayload(payload);
+        setSales(nextSales);
+        setStoreMode(sourceLabel(payload));
+        setLoadState(payload ? "ready" : "unavailable");
+        setLastSyncedAt(payload ? Date.now() : null);
+        setError(payload ? null : "No registry or Discovery API source is configured for this environment.");
       })
       .catch((caught) => {
         if (cancelled) return;
+        setPayload(null);
         setSales([]);
+        setStoreMode("Unavailable");
+        setLoadState("error");
         setError(caught instanceof Error ? caught.message : String(caught));
       })
       .finally(() => {
@@ -61,7 +96,7 @@ export function SalesPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeNetwork, address]);
+  }, [activeNetwork, address, refreshNonce]);
 
   const spaceTitleById = useMemo(() => {
     const titles = new Map<string, string>();
@@ -71,13 +106,7 @@ export function SalesPage() {
   const resolveSpaceTitle = (sale: CreatorSaleRecord) =>
     sale.spaceTitle || spaceTitleById.get(sale.spaceId) || getSpace(sale.spaceId)?.title || fallbackSpaceLabel(sale.spaceId);
   const revenueLabel = useMemo(() => {
-    const byCurrency = new Map<string, number>();
-    for (const sale of sales) {
-      const currency = sale.currency || "APT";
-      byCurrency.set(currency, (byCurrency.get(currency) || 0) + Number(sale.amountOctas || 0));
-    }
-
-    return [...byCurrency.entries()]
+    return [...getRevenueByCurrency(sales).entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([currency, amount]) => formatPaymentAmount(amount, currency))
       .join(" + ") || "0 APT";
@@ -174,6 +203,9 @@ export function SalesPage() {
     anchor.click();
     URL.revokeObjectURL(url);
   };
+  const metricsAvailable = loadState === "ready";
+  const metric = (value: string | number) => (metricsAvailable ? value : "-");
+  const retrySync = () => setRefreshNonce((value) => value + 1);
 
   return (
     <>
@@ -189,40 +221,49 @@ export function SalesPage() {
           </p>
         </section>
 
-        <section className="market-stats" aria-label="Sales summary">
+        <section className="market-stats sales-metrics" aria-label="Sales summary">
           <article>
             <span>Sales</span>
-            <strong>{sales.length}</strong>
+            <strong>{metric(sales.length)}</strong>
           </article>
           <article>
             <span>Revenue</span>
-            <strong>{revenueLabel}</strong>
+            <strong>{metric(revenueLabel)}</strong>
           </article>
           <article>
             <span>Buyers</span>
-            <strong>{buyers}</strong>
+            <strong>{metric(buyers)}</strong>
           </article>
           <article>
             <span>Sold Spaces</span>
-            <strong>{soldSpaces}</strong>
+            <strong>{metric(soldSpaces)}</strong>
           </article>
         </section>
 
-        <section className="payment-state-card">
-          <div>
-            <span className="tiny-label">Receipt source</span>
-            <strong>{address ? storeMode : "Wallet required"}</strong>
-            <p>
-              {address
-                ? "Transaction hashes appear when Oria can match the registry purchase with the buyer transaction. Access remains verified by the registry either way."
-                : "Connect the creator wallet from the header to load registry sales and mirrored receipts."}
-            </p>
+        <section className={`payment-state-card sales-source-card ${loadState}`} aria-label="Sales data source">
+          <div className="sales-source-copy">
+            <div className="sales-source-heading">
+              <span className="tiny-label">Sales data source</span>
+              <span className={`sales-status-dot ${loadState}`} aria-hidden="true" />
+              <span className="sales-status-label">
+                {loadState === "ready" ? "Synced" : loadState === "loading" ? "Syncing" : loadState === "idle" ? "Wallet required" : "Needs attention"}
+              </span>
+            </div>
+            <strong>{address ? storeMode : "Connect creator wallet"}</strong>
+            <p>{sourceDescription(payload, loadState)}</p>
+            {lastSyncedAt && <time dateTime={new Date(lastSyncedAt).toISOString()}>Last checked {formatDateTime(lastSyncedAt)}</time>}
           </div>
           <div className="sales-actions">
-            <button className="button secondary" type="button" disabled={sales.length === 0} onClick={exportCsv}>
+            <button className="button secondary" type="button" disabled={!address || isSyncing} onClick={retrySync}>
+              <RefreshCw size={15} aria-hidden="true" className={isSyncing ? "spin-icon" : undefined} />
+              {isSyncing ? "Syncing" : "Refresh"}
+            </button>
+            <button className="button secondary" type="button" disabled={!metricsAvailable || sales.length === 0} onClick={exportCsv}>
+              <FileDown size={15} aria-hidden="true" />
               Export CSV
             </button>
             <Link className="button secondary" to="/payments">
+              <ReceiptText size={15} aria-hidden="true" />
               Buyer receipts
             </Link>
           </div>
@@ -233,17 +274,21 @@ export function SalesPage() {
             <span />
             <div>
               <strong>Syncing seller sales</strong>
-              <p>Reading registry purchases and mirrored receipts from the active network.</p>
+              <p>Reading registry purchases and mirrored receipts from the active {activeNetwork} network.</p>
             </div>
           </section>
         )}
 
-        {error && (
+        {error && loadState !== "unavailable" && (
           <section className="payment-state-card failed">
             <div>
               <span className="tiny-label">Sales sync failed</span>
               <strong>Could not load seller sales.</strong>
               <p>{error}</p>
+              <button className="button secondary" type="button" onClick={retrySync}>
+                <RefreshCw size={15} aria-hidden="true" />
+                Try again
+              </button>
             </div>
           </section>
         )}
@@ -303,7 +348,7 @@ export function SalesPage() {
                   <div>
                     <div className="payment-badges">
                       <span className="network-badge stable">{sale.network}</span>
-                      <span>{sale.txHash ? "Receipt mirrored" : "Registry verified"}</span>
+                      <span>{sale.txHash ? "Receipt verified" : sale.isEstimated ? "Registry estimate" : "Registry verified"}</span>
                     </div>
                     <h2>{title}</h2>
                     <p>Buyer {shortenAddress(sale.buyer)}</p>
@@ -319,23 +364,40 @@ export function SalesPage() {
                     ) : (
                       <span>Tx hash pending</span>
                     )}
-                    <Link to={`/spaces/${sale.spaceId}`}>Open Space</Link>
+                    <Link to={`/spaces/${sale.spaceId}`}>
+                      Open Space <ArrowUpRight size={14} aria-hidden="true" />
+                    </Link>
                   </div>
                 </article>
               );
             })}
           </section>
         ) : (
-          <section className="empty-state">
+          <section className={`empty-state sales-empty-state ${loadState}`}>
+            <span className="sales-empty-kicker">{loadState === "ready" ? "Seller ledger" : "Sales sync"}</span>
             <h2>
               {sales.length > 0
                 ? "No sales match this filter."
-                : address
-                  ? "No paid unlocks yet."
-                  : "Connect a creator wallet."}
+                : loadState === "loading"
+                  ? "Loading seller revenue."
+                  : loadState === "error" || loadState === "unavailable"
+                    ? "Sales data is unavailable."
+                    : address
+                      ? "No paid unlocks yet."
+                      : "Connect a creator wallet."}
             </h2>
             {sales.length > 0 ? (
               <p>Try a different buyer wallet, Space title, or transaction hash.</p>
+            ) : loadState === "loading" ? (
+              <p>Oria is checking the active registry. Confirmed sales will appear here when the sync completes.</p>
+            ) : loadState === "error" || loadState === "unavailable" ? (
+              <>
+                <p>{error ?? "Oria could not confirm seller revenue from the active registry."}</p>
+                <button className="button primary" type="button" onClick={retrySync}>
+                  <RefreshCw size={15} aria-hidden="true" />
+                  Retry sync
+                </button>
+              </>
             ) : address ? (
               <>
                 <p>

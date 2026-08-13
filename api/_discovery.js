@@ -24,9 +24,12 @@ function setCached(key, value, ttlMs) {
 
 export function getConfig(moduleOverride) {
   const registryAddress = process.env.ORIA_REGISTRY_ADDRESS || process.env.VITE_ORIA_REGISTRY_ADDRESS;
-  const registryModule = moduleOverride || process.env.ORIA_REGISTRY_MODULE || process.env.VITE_ORIA_REGISTRY_MODULE || "space_registry";
+  const registryModule = moduleOverride || process.env.ORIA_REGISTRY_MODULE || process.env.VITE_ORIA_REGISTRY_MODULE || "space_registry_v2";
   const nodeUrl = process.env.APTOS_NODE_URL || process.env.VITE_APTOS_NODE_URL || defaultNodeUrl;
-  const indexerUrl = process.env.APTOS_INDEXER_URL || process.env.VITE_APTOS_INDEXER_URL;
+  const indexerUrl =
+    process.env.APTOS_INDEXER_URL ||
+    process.env.VITE_APTOS_INDEXER_URL ||
+    process.env.VITE_SHELBY_INDEXER_URL;
 
   if (!registryAddress) {
     throw new Error("ORIA_REGISTRY_ADDRESS is required.");

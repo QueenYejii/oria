@@ -5,12 +5,13 @@ const registryAddress = process.env.ORIA_REGISTRY_ADDRESS;
 const nodeUrl =
   process.env.APTOS_NODE_URL ?? process.env.VITE_APTOS_NODE_URL ?? "https://api.shelbynet.shelby.xyz/v1";
 
+const registryModule = process.env.ORIA_REGISTRY_MODULE ?? process.env.VITE_ORIA_REGISTRY_MODULE ?? "space_registry_v2";
 const moduleAddress = registryAddress;
 const registryType = moduleAddress
-  ? `${moduleAddress}::space_registry::Registry`
+  ? `${moduleAddress}::${registryModule}::Registry`
   : undefined;
 const spaceRecordType = moduleAddress
-  ? `${moduleAddress}::space_registry::SpaceRecord`
+  ? `${moduleAddress}::${registryModule}::SpaceRecord`
   : undefined;
 
 function sendJson(response, status, payload) {
